@@ -1,13 +1,11 @@
 ;;
-;;   hns_meg3  for epilepsy analysis
-;;
-;;  just launch 
-;;  (require '<folder-name-of-this-file>/hns_meg3)
+;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2023-Jan-5 by Akira Hashizume
-;;   Releaesd on 2023-Mar-14
+;;   Releaesd on 2023-Mar-16
 ;;   This code shall be reloaded twice for establish xfit or ssp functions. 
 ;;
+;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
 
 (defvar this-filename "/home/neurosurgery/lisp/hns_meg3"); "rewrite tihs value for each site)
 (defvar this-directory "neuro/data/ns/*.fif" "default file directory to be load fif file")
@@ -154,7 +152,8 @@
     (set-resource (G-widget "disp1") :scroll-visible 1)
     (manage paneL)
     (manage paneR)  
-    (manage form901))
+    (manage form901)
+    (XmjkUnmanageChild *control-panel*))
 )
 
 (defun create-my-memo()
@@ -294,9 +293,11 @@
       '("MISC" (create-disp5 "disp4"))
       '("delete" (GtDeleteWidget (G-widget "disp5"))))
     (make-menu menu "clear" nil 
-      '("all" (XmTextSetString my-text903 ""))
-      '("noise epoch" (my-text-delete "noies"))
-      '("ignored epoch" (my-text-delete "ignored")))
+      '("all text" (XmTextSetString my-text903 ""))
+      '("noise epoch" (my-text-delete "noise"))
+      '("ignored epoch" (my-text-delete "ignored"))
+      '("near epochs" (my-text-delete-near 0.005))
+      '("routine" (progn (my-text-delete "noise")(my-text-delete "ignored")(my-text-delete-near 0.005))))
     (return menu))
 )
 
@@ -312,9 +313,9 @@
       '("with 0.5 sec" (my-text-peak-range 0.5))
       '("with 1.0 sec" (my-text-peak-range 1.0)))
     (make-menu menu "sort" nil
-      '("according to channel" (my-text-load-as-lisp 3))
-      '("according to time" (my-text-load-as-lisp 4))
-      '("according to amplitude" (my-text-load-as-lisp 5)))
+      '("according to channel" (my-text-sort 3))
+      '("according to time" (my-text-sort 4))
+      '("according to amplitude" (my-text-sort 5)))
     (add-button menu "fit dipoles again" '(reestimate-dipoles))
     (add-button menu "memory info" '(memory-info-dialog))
     (return menu))
@@ -719,6 +720,16 @@
   (if (not (G-widget "dislay" :quiet))(initialize-hnsmeg))
 )
 
+(defun intersect(a b)
+  (let ((x nil))
+    (if (not (listp a))(setq a (list a)))
+    (if (not (listp b))(setq b (list b)))
+    (dolist (i a)
+      (dolist (j b)
+        (if (equal i j)(setq x (append x (list j))))))
+    (return x))
+)
+
 (defun linklink(gws)
   (dotimes (i (- (length gws) 1))
     ;(print (nth i gws))
@@ -766,6 +777,26 @@
       (setq str2 (read-line strm))
       (if (string-equal str2 (string-trim str str2))(setq str1 (strm-append str1 str2 (format nil "~%")))))
     (XmTextSetString my-text903 (string-left-trim "zzz" str1)))
+)
+
+(defun my-text-delete-near(span)
+  (let ((strm)(str)(Lnear nil)(L)(L4a nil)(L4b nil)(x))
+    (my-text-load-as-lisp 4);;sort according to time 
+    (setq strm (make-string-input-stream (XmTextGetString my-text903)))
+    (dotimes (i (length (my-text-line2)));; not (my-text-line)
+      (setq L (read-line-as-list strm))
+      (if (and (> (length L) 4)(numberp (first L))(numberp (second L))(numberp (fourth L))(numberp (fifth L)))
+        (progn  (if L4b (setq L4a L4b))
+                (setq L4b (fourth L))
+               (if L4a (setq x (- L4b L4a))(setq x span))
+               (print (list L4a L4b))
+               (if (< x span)(setq Lnear (append Lnear (list i)))))))
+    (setq Lnear (reverse Lnear))
+    (dolist (i Lnear)
+      (setq L (my-text-line))
+      (XmTextSetInsertionPosition my-text903 (nth i L))
+      (my-text-insert2 " near"))
+  (my-text-delete "near"))
 )
 
 (defun my-text-insert-old(str);;obsolete
@@ -873,32 +904,35 @@
 )
 
 (defun my-text-load-as-lisp(item);; item 3: MEG 4:time 5:amplitude
-  (let ((strm)(str)(Lstr nil)(x nil)(x3 nil)(x4 nil)(x5 nil)(y nil)(z)(CR (format nil "~%")))
+  (let ((strm)(str)(strm0)(str0)(strx)(Lstr nil)(x nil)
+       (x3 nil)(x4 nil)(x5 nil)(y nil)(z)(CR (format nil "~%")))
     (setq str (XmTextGetString my-text903))
     (setq nL (length (my-text-line2)))
     (setq strm (make-string-input-stream str))
+    (setq strm0 (make-string-input-stream str))
+    (setq str0 "zzz")
     (dotimes (i nL)
       (setq L (read-line-as-list strm))
+      (setq strx (read-line strm0))
       (if (and (> (length L) 4)(floatp (first L))(floatp (fourth L))(floatp (fifth L)))
           (progn
             (setq x (string-left-trim "MEG" (string-left-trim " " (string (third L)))))
             (setq x3 (append x3 (list (read-from-string x))));;according to MEG
             (setq x4 (append x4 (list (fourth L))));;according to time
             (setq x5 (append x5 (list (fifth L))));according to amplitude
-            (setq y (append y (list i))))))
+            (setq y (append y (list i))))
+          (setq str0 (strm-append str0 strx CR))))
     (setq strm (make-string-input-stream str))
     (if (= item 3)(setq x x3))
     (if (= item 4)(setq x x4))
     (if (= item 5)(setq x x5))
     (dotimes (i nL)
       (setq Lstr (append Lstr (list (read-line strm)))))
-    (print "ll")
     (setq z (sort-order x))
     (if (= item 5)(setq z (reverse z)))
-    (setq str "zzz")
     (dotimes (i (length z))
-      (setq str (strm-append str (nth (nth (nth i z) y) Lstr) CR)))
-    (XmTextSetString my-text903 (string-left-trim "zzz" str)))
+      (setq str0 (strm-append str0 (nth (nth (nth i z) y) Lstr) CR)))
+    (XmTextSetString my-text903 (string-left-trim "zzz" str0)))
 )
 
 (defun my-text-peak-range(span)
@@ -966,6 +1000,12 @@
         (dolist (disp disps)
           (set-resource (G-widget disp ) :point t2 :selection-start t0 :selection-length span))
         (return t))(return nil)))
+)
+
+(defun my-text-sort(item);;item 3:MEG 4:time 5;amplitude
+  (if (equal item 3)(progn (my-text-load-as-lisp 4)(my-text-load-as-lisp 3)))
+  (if (equal item 4)(progn (my-text-load-as-lisp 5)(my-text-load-as-lisp 4)))
+  (if (equal time 5)(progn (my-text-load-as-lisp 4)(my-text-load-as-lisp 5)))
 )
 
 (defun open-fiff-file()
@@ -1056,20 +1096,20 @@
 
 (defun scan-max-selection(ndip)
   (let ((mtx)(x)(tm)(smp)(t0)(bnd)(span)(w))
-    (when (G-widget "src" :quiet)(progn
-      (setq w (G-widget "disp1"))
-      (setq smp (resource (G-widget "plotter") :x-scale))
-      (setq span (/  (resource w :length) 2))
-      (setq mtx (resource (G-widget "src") :matrix))
-      (setq x (matrix-max mtx))
-      (setq tm (sort-order x))
-      (setq tm (reverse tm))
-      (dotimes (i ndip)
-        (unless (longworking "checking..." i ndip)(error "interrupted"))
-        (setq t0 (* (nth i tm) smp))
-        (set-resource w :point (- t0 span) :selection-start t0 :selection-length smp)
-        (data-selection2 0.5)));;large noise at one ch should be deleted...
-      (longworking "done" 1 1)))
+    (if (not (G-widget "src" :quiet))(error "Scan first!"))
+    (setq w (G-widget "disp1"))
+    (setq smp (resource (G-widget "plotter") :x-scale))
+    (setq span (/  (resource w :length) 2))
+    (setq mtx (resource (G-widget "src") :matrix))
+    (setq x (matrix-max mtx))
+    (setq tm (sort-order x))
+    (setq tm (reverse tm))
+    (dotimes (i ndip)
+      (unless (longworking "checking..." i ndip)(error "interrupted"))
+      (setq t0 (* (nth i tm) smp))
+      (set-resource w :point (- t0 span) :selection-start t0 :selection-length smp)
+      (data-selection2 0.5));;large noise at one ch should be deleted...
+    (longworking "done" 1 1))
 )
 
 (defun scan-max-show(span)
@@ -1240,6 +1280,23 @@
       (make-matrix 1 26 (vref xx 0))(make-matrix 1 26 (vref xx 1))(make-matrix 1 26 (vref xx 2))(make-matrix 1 26 (vref xx 3))
       (make-matrix 1 24 (vref xx 4))(make-matrix 1 24 (vref xx 5))(make-matrix 1 26 (vref xx 6))(make-matrix 1 26 (vref xx 7))))
     (set-resource (G-widget "disp1") :offsets (transpose x)))      
+)
+
+(defun setdiff(a b)
+  (let ((x nil)(y))
+    (if (not (listp a))(setq a (list a)))
+    (if (not (listp b))(setq b (list b)))
+    (dolist (i a)
+      (setq y t)
+      (dolist (j b)
+        (if (equal i j)(setq y nil)))
+      (if y (setq x (append x (list i)))))
+    (dolist (i b)
+      (setq y t)
+      (dolist (j a)
+        (if (equal i j)(setq y nil)))
+      (if y (setq x (append x (list i)))))
+    (return x))
 )
 
 (defun set-max-scale(w each);each:nil->all t:->each ch
