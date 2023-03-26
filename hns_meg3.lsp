@@ -2,7 +2,7 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2023-Jan-5 by Akira Hashizume
-;;   Releaesd on 2023-Mar-25
+;;   Releaesd on 2023-Mar-26
 ;;   This code shall be reloaded twice for establish xfit or ssp functions. 
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
@@ -41,7 +41,7 @@
     (set-resource w :names name)
     (XmTextSetInsertionPosition my-text903 99999)
     (setq planoise (* planoise 1e+13) magnoise (* magnoise 1e+15))
-    (setq str (format nil "~%average noise level  ~0,1f fT/cm,  ~0,1f fT" planoise magnoise))
+    (setq str (format nil "~%average noise/amp level  ~0,1f fT/cm,  ~0,1f fT" planoise magnoise))
     (XmTextSetInsertionPosition my-text903 pos)
     (my-text-insert2 str)
     (return str))
@@ -440,7 +440,8 @@
     (setq datcol (reverse (sort datcol2)))
     (setq d1 (first datcol) d2 (second datcol)) 
     (if (> (* d1 ratio) d2)(setq str (strm-append str "  noise")))
-    (my-text-insert2 str))
+    (my-text-insert2 str)
+    (XmTextSetInsertionPosition my-text903 9999999))
 )
 
 (defun defchs()
@@ -644,13 +645,14 @@
 )
 
 (defun get-matrix-max-from-x-selection(w)
-  (let ((mtx)(x)(w2))
+  (let ((mtx)(x)(w2)(v))
     (setq x (x-selection w))
     (setq w2 (widget-source w));;point!!!
     (if x (progn
-      (setq mtx (get-data-matrix w2 (x-to-sample w (first x))(x-to-sample w (second x))))
-      (return (get-matrix-max mtx))) nil
-    ))
+      (setq v (x-to-sample w (second x)))
+      (if (< v 2)(setq v 2));; matrix colum should be =>2
+      (setq mtx (get-data-matrix w2 (x-to-sample w (first x)) v))
+      (return (get-matrix-max mtx)))))
 )
 
 (defun get-widget-max(w1); G-widget
@@ -785,7 +787,7 @@
 )
 
 (defun my-text-delete(str)
-  (let ((str0)(str1 "zzz")(str2)(strm)(nL)(L)(k))
+  (let ((str0)(str1 "zzz")(str2)(strm)(nL)(L)(k)(count 0))
     (setq str0 (XmTextGetString my-text903))
     (setq strm (make-string-input-stream str0))
     (dotimes (i (length (my-text-line)))
@@ -796,9 +798,11 @@
         (dolist (i L)
           (if (symbolp i)
             (if (equal str (format nil "~a" i))(setq k nil))))
-        (if k (setq str1 (strm-append str1 str2 (format nil "~%")))))))
+        (if k (setq str1 (strm-append str1 str2 (format nil "~%")))(inc count)))))
     (setq str1 (string-left-trim "zzz" str1))
-    (XmTextSetString my-text903 str1))
+    (XmTextSetString my-text903 str1)
+    (XmTextSetInsertionPosition my-text903 999999999)
+    (my-text-insert2 (format nil "~a epoch deleted ~%" count)))
 )
 
 (defun my-text-delete-near(span)
@@ -818,7 +822,7 @@
       (setq L (my-text-line))
       (XmTextSetInsertionPosition my-text903 (nth i L))
       (my-text-insert2 " near")))
-  ;(my-text-delete "near"))
+  (my-text-delete "near"))
 )
 
 (defun my-text-insert-old(str);;obsolete
@@ -1041,7 +1045,7 @@
 )
 
 (defun scan-max-go()
-  (let ((x)(w4)(t0)(t1)(span)(meg8))
+  (let ((x)(w4)(t0)(t1)(span)(meg8)(mtx)(w (G-widget "src"))(v))
     (when (G-widget "src" :quiet)(progn
       (setq x (x-selection (G-widget "plotter")))
       (if x 
@@ -1051,7 +1055,11 @@
           (setq t1 (- t0 (/ span 2)))
           (setq w4 (list "disp1" "disp2" "disp3" "disp4" "disp5"))
           (dolist (w w4)(set-resource (G-widget w) :point t1))))
-      (setq x (get-matrix-max-from-x-selection (G-widget "plotter")))
+      (setq v (x-to-sample w (second x)))
+      (if (< v 2)(setq v 2))
+      (setq mtx (get-data-matrix w (x-to-sample w (first x)) v))
+      (setq mtx (truncate-rows mtx 8))
+      (setq x (get-matrix-max mtx))
       (setq x (second x))
       (setq meg8 (list "L-temporal" "R-temporal" "L-parietal" "R-parietal" "L-occipital" "R-occipital" "L-frontal" "R-frontal"))
       (select-megch (nth (1- x) meg8)))))
@@ -1151,6 +1159,7 @@
     (if EEGch (progn 
       (setq x (mat-append x (matrix (list (list (matrix-extent-max Y))))))
       (setq y (make-matrix 9 1 0.99))))
+    (set-resource wplt :select-hook '(scan-select))
     (set-resource wplt :scales (transpose x) :offsets y)
     (set-resource wplt :ch-label-space 80 :point 0 :length 99999)
     (set-resource wplt :default-color (resource w :default-color))
@@ -1170,6 +1179,11 @@
       (setq t1 (- t0 (/ span 2)))
       (set-resource w :point t1 :length span)
       (set-resource w :selection-start (first x) :selection-length (second x)))))
+)
+
+(defun scan-select()
+  (if (x-selection (G-widget "plotter"))
+    (scan-max-go)))
 )
 
 (defun select-coil(coilname)  
