@@ -2,14 +2,16 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2023-Jan-5 by Akira Hashizume
-;;   Releaesd on 2023-Mar-26
+;;   Releaesd on 2023-Apr-2
 ;;   This code shall be reloaded twice for establish xfit or ssp functions. 
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
 
 (defvar this-filename "/home/neurosurgery/lisp/hns_meg3"); "rewrite tihs value for each site)
 (defvar this-directory "neuro/data/ns/*.fif" "default file directory to be load fif file")
-(defvar waves-name (list "discharge" "spike" "polyspike" "burst" "ictal onset" "EEG spike" "physiological activities" "noise" "???"));; add terms accoriding to user's analysis policy
+(defvar waves-name 
+  (list "discharge" "spike" "polyspike" "burst" "ictal onset" "EEG spike" "physiological activities" "noise" "???"))
+;; add terms accoriding to user's analysis policy
 
 
 (defun calc_near_coil()
@@ -44,6 +46,7 @@
     (setq str (format nil "~%average noise/amp level  ~0,1f fT/cm,  ~0,1f fT" planoise magnoise))
     (XmTextSetInsertionPosition my-text903 pos)
     (my-text-insert2 str)
+    (xfit-command (format nil "noise constant ~0,1f ~0,1f" planoise magnoise))
     (return str))
 )
 
@@ -208,7 +211,7 @@
     (add-lisp-callback my-button907 "activateCallback" '(change-start 1)) 
     (add-lisp-callback my-button908 "activateCallback" '(full-view))
     (add-lisp-callback my-button909 "activateCallback" '(data-selection))
-    (add-lisp-callback my-button910 "activateCallback" '(fit-at-max))  
+    (add-lisp-callback my-button910 "activateCallback" '(progn (fit-at-max)(my-text-selection-go)))  
     (add-lisp-callback my-button911 "activateCallback" '(progn (data-selection)(fit-at-max))) 
     (setq my-menu903 (create-my-memo-menu1 my-menu-bar903 "menu"))
     (setq my-menu903 (create-my-memo-menu2 my-menu-bar903 "waves"))
@@ -275,7 +278,6 @@
     (dolist (x waves-name)
       (setq y (string-rep-char x " " "^"))
       (setq str (format nil "(my-text-insert2-symbol '~a)" y))
-      (print str)
       (add-button menu x (read-from-string str)))
     (return menu))
 )
@@ -298,6 +300,12 @@
       '("ignored epoch" (my-text-delete "ignored"))
       '("near epochs" (my-text-delete-near 0.005))
       '("routine" (progn (my-text-delete "noise")(my-text-delete "ignored")(my-text-delete-near 0.005))))
+    (make-menu menu "xfit size" nil
+      '("100" (xfit-command "displaysize 100"))
+      '("200" (xfit-command "displaysize 200"))
+      '("250" (xfit-command "displaysize 250"))
+      '("300" (xfit-command "displaysize 300"))
+      '("400" (xfit-command "displaysize 400")))
     (return menu))
 )
 
@@ -316,7 +324,13 @@
       '("according to channel" (progn (my-text-load-as-lisp 4)(my-text-load-as-lisp 3)))
       '("according to time" (progn (my-text-load-as-lisp 5)(my-text-load-as-lisp 4)))
       '("according to amplitude" (progn (my-text-load-as-lisp 4)(my-text-load-as-lisp 5))))
-    (add-button menu "fit dipoles again" '(reestimate-dipoles))
+    (make-menu menu "diple" nil
+      '("fit again" (reestimate-dipoles))
+      '("dipole to MriLab" (xfit-command "autosend_dipole on"))
+      '("dipole not to MriLab" (xfit-command "autosend_dipole off"))
+      '("save dipoles" (dipsave))
+      '("load dipoles" (dipload))
+      '("clear dipole" (xfit-command "dipclear")))
     (add-button menu "memory info" '(memory-info-dialog))
     (return menu))
 )
@@ -573,6 +587,29 @@
     (my-sensor-number 102 "sensor numbers for estimation (9~102)" 'number))
 )
 
+(defun dipload()
+  (let ((name))
+    (setq name (resource (G-widget "file") :filename))
+    (setq name (strm-append (filename-directory name) "_" (filename-base name) ".bdip"))
+    (xfit-command (format nil "dipload ~a" savename)))
+)
+
+(defun dipread();;destructive!!
+  (let ((name (resource (G-widget "file"):filename))(fid)(x))
+    (setq name (strm-append (filename-directory name) "_" (filename-base name) ".bdip"))
+    (setq fid (open name :direction :input))
+    (setq x (read-real fid))
+    (close fid)
+    (print x))
+)
+
+(defun dipsave()
+  (let ((name))
+    (setq name (resource (G-widget "file") :filename))
+    (setq name (strm-append (filename-directory name) "_" (filename-base name) ".bdip"))
+    (xfit-command (format nil "dipsave ~a" savename)))
+)
+
 (defun execute1()
   (if (G-widget "display" :quiet)(GtDeleteWidget (G-widget "display")))
   (create-my-memo)
@@ -581,13 +618,16 @@
 )
 
 (defun execute2()
-  (if (> (resource (G-widget "file") :channels) 200)
-    (progn
+  (let ((name))
+    (if (> (resource (G-widget "file") :channels) 190)(progn
       (setq default-data-source "meg-select")
       (xfit);;start xfit
       (if (not (x-selection))(set-x-selection (G-widget "disp1") 0 0.1))
       (xfit-transfer-data nil (x-selection))
-    ))
+      ;(setq name (resource (G-widget "file") :filename))
+      ;(setq name (file-directory name))
+      ;(xfit-command (format nil "cd ~a" name)))));; cd command does not work properly
+  )))
 )
 
 (defun fit-at-max()
@@ -765,6 +805,14 @@
     (dotimes (i (length mtx))
       (setq col (column i mtx))
       (setq R (append R (list (second (matrix-extent col))))))
+    (return R))
+)
+
+(defun matrix-mean(mtx)
+  (let ((R nil)(col)(x)(ncol (array-dimension mtx 1)))
+    (dotimes (i (array-dimension mtx 0))
+      (setq x (matrix-element-sum (row i mtx)))
+      (setq R (append R (list (/ x ncol)))))
     (return R))
 )
 
@@ -1299,29 +1347,30 @@
       (setq R (format nil "0~d1 0~d2 0~d3 " num num num))))
 )
 
-(defun set306amp()
-  (let ((grascale)(nch)(magscale)(w (G-widget "meg8G"))(data)(x))
-    ;;204 planar
-    (set-resource (G-widget "disp1") :superpose t)
-    (link (G-widget "meg8G")(G-widget "disp1"))
-    (setq grascale (resource (G-widget "disp3") :scales))
-    (setq grascale (vref grascale 0)) ;gra-scale(1,1)
-    (setq nch (resource (G-widget "disp1") :channels))
-    (setq grascale (* grascale 20))
-    (set-resource (G-widget "disp1") :scales (make-matrix nch 1 grascale))
-    ;;102 magnetometer
-    (set-resource (G-widget "disp2") :superpose t)
-    (setq nch (resource w :channels))
-    (link (G-widget "meg8M")(G-widget "disp2"))  
-    (setq data (get-data-matrix w (x-to-sample w (resource (G-widget "disp3") :point))
-                                  (x-to-sample w (resource (G-widget "disp3") :length))))
-    (setq x (matrix-extent data))
-    (setq magscale (eval (cons 'max (mapcar #'abs x))))
-    (setq magscale (* magscale 0.5));thumb's rule
-    (set-resource (G-widget "disp2") :scales (make-matrix nch 1 magscale)))
+(defun set306offset()
+;; to extract bad channel of ignored channel
+  (let ((ch)(x)(xx)(mtx)(w (G-widget "meg1")))
+    (setq ch (list gra-L-temporal gra-R-temporal gra-L-parietal gra-R-temporal gra-L-occipital gra-R-occipital gra-L-frontal gra-R-frontal))
+    (setq x nil xx (ruler-vector -0.85 0.85 8))
+    (dolist (i ch)
+      (set-resource w :names i)
+      (setq x (append x (list (resource w :channels))))) 
+    (setq mtx (make-matrix 1 (nth 0 x)(vref xx 0)))
+    (dotimes (i 7)
+      (setq mtx (mat-append mtx (make-matrix 1 (nth (1+ i) x)(vref xx (1+ i))))))
+    (set-resource (G-widget "disp1") :offsets (transpose mtx):superpose t)
+    (setq ch (list mag-L-temporal mag-R-temporal mag-L-parietal mag-R-temporal mag-L-occipital mag-R-occipital mag-L-frontal mag-R-frontal))
+    (setq x nil)
+    (dolist (i ch)
+      (set-resource w :names i)
+      (setq x (append x (list (resource w :channels))))) 
+    (setq mtx (make-matrix 1 (nth 0 x)(vref xx 0)))
+    (dotimes (i 7)
+      (setq mtx (mat-append mtx (make-matrix 1 (nth (1+ i) x)(vref xx (1+ i))))))
+    (set-resource (G-widget "disp2") :offsets (transpose mtx):superpose t))
 )
 
-(defun set306offset()
+(defun set306offset_old()
   (let ((x)(xx))
     (setq xx (ruler-vector -0.85 0.85 8))
     ;;204 planar
@@ -1335,9 +1384,7 @@
       (make-matrix 1 13 (vref xx 0))(make-matrix 1 13 (vref xx 1))(make-matrix 1 13 (vref xx 2))(make-matrix 1 13 (vref xx 3))
       (make-matrix 1 12 (vref xx 4))(make-matrix 1 12 (vref xx 5))(make-matrix 1 13 (vref xx 6))(make-matrix 1 13 (vref xx 7))))
     (set-resource (G-widget "disp2") :offsets (transpose x))
-    (return x)
-)    
-  
+    (return x))
 )
 
 (defun setdiff(a b)
@@ -1364,6 +1411,8 @@
       (progn
         ;(setq x (eval (cons 'max x)));; function same to the above code
         (setq x (apply #'max x))
+        (if (string-equal (resource w :name) "disp1")(setq x (/ x 2.5))); thumb's rule planar
+        (if (string-equal (resource w :name) "disp2")(setq x (/ x 2.5))); thumb's rule magnetometer
         (setq nch (resource w :channels))
         (if (> (second (matrix-extent (resource w :offsets))) 0)(setq x (* x 20)))
         (setq x (make-matrix nch 1 x)))
@@ -1372,26 +1421,34 @@
 )
 
 (defun set-MEG-EEG-default()
-  (let ((x))
+  (let ((x)(sc))
     (set306offset)
     (select-megch "L-temporal")
     (select-eegch "banana")
     (select-eegch "misc")
     (set-max-scale (G-widget "disp3") nil)
-    (set-resource  (G-widget "disp1") :superpose t)
     (link (G-widget "meg8G")(G-widget "disp1"))
-    (set306amp)
-    ;(set-max-scale (G-widget "disp1") nil)
+    (link (G-widget "meg8M")(G-widget "disp2"))
+    ;(set306amp)
+    (set-max-scale (G-widget "disp1") nil)
+    (set-max-scale (G-widget "disp2") nil)
     (set-max-scale (G-widget "disp4") nil)
-    (set-max-scale (G-widget "disp5") t))
+    (set-max-scale (G-widget "disp3") nil)
+    (set-max-scale (G-widget "disp5") t)
+    (setq sc (resource (G-widget "disp1") :scales))
+    (setq my-gradiometer-scale (/ (car (matrix-mean sc)) 2.5))
+    (setq sc (resource (G-widget "disp2") :scales))
+    (setq my-magnetometer-scale(/ (car (matrix-mean sc)) 2.5))
+    (setq sc (resource (G-widget "disp3") :scales))
+    (setq my-eeg-scale (car (matrix-mean sc)))) 
 )
 
 (defun set-MEG-EEG-default-scale()
   (let ((nch)(xx)(str)(ch))
     (setq nch (resource (G-widget "disp1") :channels))
-    (set-resource (G-widget "disp1") :scales (make-matrix nch 1 (*  my-gradiometer-scale 20)))
+    (set-resource (G-widget "disp1") :scales (make-matrix nch 1 (*  my-gradiometer-scale 2.5)))
     (setq nch (resource (G-widget "disp2") :channels))
-    (set-resource (G-widget "disp2") :scales (make-matrix nch 1 (*  my-magnetometer-scale 20)))
+    (set-resource (G-widget "disp2") :scales (make-matrix nch 1 (*  my-magnetometer-scale 2.5)))
     (set306offset)
     (setq nch (resource (G-widget "disp3") :channels))
     (setq str (get-property (G-widget "disp3") 0 :name))
@@ -1401,6 +1458,13 @@
       (set-resource (G-widget "disp3") :scales (make-matrix nch 1 my-gradiometer-scale)))
     (setq nch (resource (G-widget "disp4") :channels))
     (set-resource (G-widget "disp4") :scales (make-matrix nch 1 my-eeg-scale)))
+)
+
+(defun set-multi-scale(w mult)
+  (let ((mtx))
+    (setq mtx (resource w :scales))
+    (setq mtx (* (map-matrix mtx #'* mult)))
+    (set-resource w :scales mtx)) 
 )
 
 (defun setSSP()
