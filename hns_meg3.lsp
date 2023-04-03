@@ -2,7 +2,7 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2023-Jan-5 by Akira Hashizume
-;;   Releaesd on 2023-Apr-2
+;;   Releaesd on 2023-Apr-3
 ;;   This code shall be reloaded twice for establish xfit or ssp functions. 
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
@@ -239,6 +239,7 @@
         (progn (initialize-hnsmeg-check)(open-fiff-file)(set-MEG-EEG-default))))
       '("save as *-wave.txt" (my-text-save))
       '("load *-wave.txt" (my-text-load))
+      '("snapshot" (snapshot))
       '("set SSP" (setSSP))
       '("activate xfit" (require this-filename))))
     (return menu))
@@ -329,8 +330,8 @@
       '("dipole to MriLab" (xfit-command "autosend_dipole on"))
       '("dipole not to MriLab" (xfit-command "autosend_dipole off"))
       '("save dipoles" (dipsave))
-      '("load dipoles" (dipload))
-      '("clear dipole" (xfit-command "dipclear")))
+      '("load dipoles" (dipload)))
+      ;'("clear dipole" (xfit-command "dipclear")));; it does not work properly
     (add-button menu "memory info" '(memory-info-dialog))
     (return menu))
 )
@@ -591,14 +592,15 @@
   (let ((name))
     (setq name (resource (G-widget "file") :filename))
     (setq name (strm-append (filename-directory name) "_" (filename-base name) ".bdip"))
-    (xfit-command (format nil "dipload ~a" savename)))
+    ;(if (not (file-exists-p name)(error (format nil "~a DOES NOT exist" name))));;it does not work properly
+    (xfit-command (format nil "dipload ~a" name)))
 )
 
 (defun dipread();;destructive!!
   (let ((name (resource (G-widget "file"):filename))(fid)(x))
     (setq name (strm-append (filename-directory name) "_" (filename-base name) ".bdip"))
     (setq fid (open name :direction :input))
-    (setq x (read-real fid))
+    (setq x (read fid))
     (close fid)
     (print x))
 )
@@ -607,7 +609,7 @@
   (let ((name))
     (setq name (resource (G-widget "file") :filename))
     (setq name (strm-append (filename-directory name) "_" (filename-base name) ".bdip"))
-    (xfit-command (format nil "dipsave ~a" savename)))
+    (xfit-command (format nil "dipsave ~a" name)))
 )
 
 (defun execute1()
@@ -861,10 +863,9 @@
       (setq L (read-line-as-list strm))
       (if (and (> (length L) 4)(numberp (first L))(numberp (second L))(numberp (fourth L))(numberp (fifth L)))
         (progn  (if L4b (setq L4a L4b))
-                (setq L4b (fourth L))
-               (if L4a (setq x (- L4b L4a))(setq x span))
-               (print (list L4a L4b))
-               (if (< x span)(setq Lnear (append Lnear (list i)))))))
+          (setq L4b (fourth L))
+          (if L4a (setq x (- L4b L4a))(setq x span))
+          (if (< x span)(setq Lnear (append Lnear (list i)))))))
     (setq Lnear (reverse Lnear))
     (dolist (i Lnear)
       (setq L (my-text-line))
@@ -1483,6 +1484,20 @@
     (my-text-insert (format nil "~%~a" str)))
 )
 
+(defun snapshot()
+; disp :main->main window :plotter ->plotter
+  (let ((savename)(savename2)(foldername)(count 1))    
+    (setq savename (resource (G-widget "file") :filename))
+    (setq foldername (filename-directory savename))
+    (setq savename (str-append foldername (format nil "snapshot~d.png" count))) 
+    (while (file-exists-p savename)
+      (inc count)(setq savename (str-append foldername (format nil "snapshot~d.png" count))))
+    (setq savename2 (change-extension savename "xwd"))
+    (system (format nil "xwd -frame -out ~a" savename2))
+    (system (format nil "convert ~a ~a" savename2 savename))
+    (system (format nil "rm ~a" savename2)))
+)
+
 (defun sort(xlist)
   (let ((N0 (length xlist))(N1)(xx nil)(xmin)(R nil))
     (dolist (i xlist)(setq xx (append xx (list i))));; We must duplicate xlist
@@ -1555,4 +1570,17 @@
 
 (progn
   (if (not (resource (G-widget "file") :directory))(execute1)(execute2))
+)
+
+
+(defun switch_test(item)
+;; this valid number symbol
+  (case item
+    (1 (print 1))
+    (2 (print 2))
+    (3 (print 3))
+    ('a (print "a"))
+    ('b (print "b"))
+    ("c" (print "c"));this does not work
+    (otherwise (print "??")))
 )
