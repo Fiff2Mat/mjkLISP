@@ -1,11 +1,16 @@
+;;  (require '/home/neurosurgery/lisp/hns_meg3)
 ;;
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2023-Jan-5 by Akira Hashizume
-;;   Releaesd on 2023-Apr-3
+;;   Releaesd on 2023-May-1
 ;;   This code shall be reloaded twice for establish xfit or ssp functions. 
+;;   read_bdip built fro read_bdip4.c is used for reading BDIP file 
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
+;;  Both hns_meg3.lsp and read_bdip4.c are uploaded in GitHub 
+;;  https://github.com/Fiff2Mat/mjkLISP/
+
 
 (defvar this-filename "/home/neurosurgery/lisp/hns_meg3"); "rewrite tihs value for each site)
 (defvar this-directory "neuro/data/ns/*.fif" "default file directory to be load fif file")
@@ -46,7 +51,7 @@
     (setq str (format nil "~%average noise/amp level  ~0,1f fT/cm,  ~0,1f fT" planoise magnoise))
     (XmTextSetInsertionPosition my-text903 pos)
     (my-text-insert2 str)
-    (xfit-command (format nil "noise constant ~0,1f ~0,1f" planoise magnoise))
+    (xfit-command (format nil "noise constant ~0,1f ~0,1f ~%" planoise magnoise))
     (return str))
 )
 
@@ -90,6 +95,22 @@
     (set-resource (G-widget "disp1") :point t0)
     (set-resource (G-widget "disp4") :point t0)
     (set-resource (G-widget "disp5") :point t0))
+)
+
+(defun check-lowgof(gof)
+  (let ((x)(fid)(pathname1)(g)(tm)(xx nil))
+    (setq pathname (filename-directory this-filename))
+    (xfit-command "dipsave input.bdip")         ;; create input.bdip at /home/username 
+    (system (format nil "~aread_bdip" pathname));; create output.txt at the /home/username
+    (system "rm input.bdip")
+    (setq fid (open "output.txt" :direction :input))
+    (dotimes (i 10000)
+      (setq x (read-line-as-list fid))
+      (if x (progn
+        (setq tm (first x) g (nth 8 x))
+        (if (< g gof)(setq xx (append xx (list (list tm g))))))))
+    (system "rm output.txt")
+    (return xx))
 )
 
 (defun convert-gra-selections(gras)
@@ -307,6 +328,7 @@
       '("250" (xfit-command "displaysize 250"))
       '("300" (xfit-command "displaysize 300"))
       '("400" (xfit-command "displaysize 400")))
+    (add-button menu "neo/TRIUX/VectorView" '(defchs_execute))
     (return menu))
 )
 
@@ -443,6 +465,7 @@
   (let ((tm (x-selection))(t1)(t2)(w)(data)(x)(datcol)(datcol2 nil)(ch)(t0)(str)(d1)(d2)(str))
     (setq t1 (first tm) t2 (second tm))
     (setq w (widget-source (G-widget "disp1")))
+    (print (list (x-to-sample w t1)(x-to-sample w t2)))
     (setq data (get-data-matrix w (x-to-sample w t1)(x-to-sample w t2)))
     (setq x (get-matrix-max data))
     (setq ch (get-property w (1- (second x)) :name)); 0 1 2 3 ...
@@ -500,6 +523,15 @@
     '("MEG[ 521  511  311  341  121  821  531  541]" "MEG[ 321  611  331  621  641]"))
   (defparameter mag-R-frontal
     '("MEG[ 811  911  921 1211 1221 1411  941  931]" "MEG[1231 1011 1021 1241 1031]"))
+  ;(defparameter eegchname '("Fp1" "F3" "C3" "P3" "O1" "F7" "T3" "T5" "Fp2" "F4" "C4" "P4" "O2" "F8" "T4" "T6" "Fz" "Cz" "Pz" "ECG" "EOG"))
+  (defparameter eeg-banana-name '("Fp1-F7" "F7-T3" "T3-T5" "T5-O1" "Fp1-F3" "F3-C3" "C3-P3" "P3-O1" "Fz-Cz" "Cz-Pz" "Fp2-F4" "F4-C4" "C4-P4" "P4-O2" "Fp2-F8" "F8-T4" "T4-T6" "T6-O2"))
+  (defparameter eeg-coronal-name '("Fp1-F7" "Fp2-Fp1" "F8-Fp2" "F3-F7" "Fz-F3" "F4-Fz" "F8-F4" "C3-T3" "Cz-C3" "C4-Cz" "T4-C4" "P3-T5" "Pz-P3" "P4-Pz" "T6-P4" "O1-T5" "O2-O1" "T6-O2"))
+  (defparameter eeg-coronal-name '("F7-Fp1" "Fp1-Fp2" "Fp2-F8" "F7-F3" "F3-Fz" "Fz-F4" "F4-F8" "T3-C3" "C3-Cz" "Cz-C4" "C4-T4" "T5-P3" "P3-Pz" "Pz-P4" "T4-T6" "T5-O1" "O1-O2" "O2-T6"))
+  (defparameter eeg-mono-name '("F7" "T3" "T5" "Fp1" "F3" "C3" "P3" "O1" "Fz" "Cz" "Pz" "Fp2" "F4" "C4" "P4" "O2" "F8" "T4" "T6"))
+  (defparameter eeg-misc-name '("ECG" "EOG"))
+)
+
+(defun defchs1()
   (defparameter eeg-mono
     '("EEG[6 7 8 1 2 3 4 5 17 18 19 9 10 11 12 13 14 15 16]"))
   (defparameter eeg-banana1
@@ -512,12 +544,28 @@
     '("EEG[1 9 14 2 17 10 14 3 18 11 15 4 19 12 16 5 13 16]"))
   (defparameter eeg-misc
     '("EEG[20 21]"))
-  ;(defparameter eegchname '("Fp1" "F3" "C3" "P3" "O1" "F7" "T3" "T5" "Fp2" "F4" "C4" "P4" "O2" "F8" "T4" "T6" "Fz" "Cz" "Pz" "ECG" "EOG"))
-  (defparameter eeg-banana-name '("Fp1-F7" "F7-T3" "T3-T5" "T5-O1" "Fp1-F3" "F3-C3" "C3-P3" "P3-O1" "Fz-Cz" "Cz-Pz" "Fp2-F4" "F4-C4" "C4-P4" "P4-O2" "Fp2-F8" "F8-T4" "T4-T6" "T6-O2"))
-  (defparameter eeg-coronal-name '("Fp1-F7" "Fp2-Fp1" "F8-Fp2" "F3-F7" "Fz-F3" "F4-Fz" "F8-F4" "C3-T3" "Cz-C3" "C4-Cz" "T4-C4" "P3-T5" "Pz-P3" "P4-Pz" "T6-P4" "O1-T5" "O2-O1" "T6-O2"))
-  (defparameter eeg-coronal-name '("F7-Fp1" "Fp1-Fp2" "Fp2-Fp2" "F7-F3" "F3-Fz" "Fz-F4" "F4-F8" "T3-C3" "C3-Cz" "Cz-C4" "C4-T4" "T5-P3" "P3-Pz" "Pz-P4" "T4-T6" "T5-O1" "O1-O2" "O2-T6"))
-  (defparameter eeg-mono-name '("F7" "T3" "T5" "Fp1" "F3" "C3" "P3" "O1" "Fz" "Cz" "Pz" "Fp2" "F4" "C4" "P4" "O2" "F8" "T4" "T6"))
-  (defparameter eeg-misc-name '("ECG" "EOG"))
+)
+
+(defun defchs2()
+  (defparameter eeg-mono
+    '("EEG[3 8 13 1 4 9 14 18 5 10 15 2 6 11 16 19 7 12 17]"))
+  (defparameter eeg-banana1
+    '("EEG[1 3 8 13 1 4 9 14 5 10 2 6 11 16 2 7 12 17]"))
+  (defparameter eeg-banana2
+    '("EEG[3 8 13 18 4 9 14 18 10 15 6 11 16 19 7 12 17 19]"))
+  (defparameter eeg-coronal1
+    '("EEG[3 1 2 3 4 5 6 8 9 10 11 13 14 15 16 13 18 19]"))
+  (defparameter eeg-coronal2
+    '("EEG[1 2 7 4 5 6 7 9 10 11 12 14 15 16 17 18 19 17]"))
+  (defparameter eeg-misc
+    '("BIO[0011 0012]" "ECG*" "EOG*"))
+)
+
+(defun defchs_execute()
+  (if (isneotriux)(defchs2)(defchs1))
+  (linklink '("band-pass2" "misc" "disp5"))
+  (set-MEG-EEG-default)
+  (if (isneotriux)(return "neoTRIUX")(return "VectorView")))
 )
 
 (defun defchpos() 
@@ -727,9 +775,9 @@
   (set-resource (G-widget "meg0") :names '("MEG*"))
   (set-resource (G-widget "meg") :names '("MEG*"))
   (set-resource (G-widget "meg-select") :names '("MEG*"))
-  (set-resource (G-widget "eeg1") :names '("EEG*") :ignore '("EEG20" "EEG21"))
-  (set-resource (G-widget "eeg2") :names '("EEG*") :ignore '("EEG20" "EEG21"))
-  (set-resource (G-widget "misc") :names '("EEG20" "EEG21"))
+  (set-resource (G-widget "eeg1") :names '("EEG*")); :ignore '("EEG20" "EEG21"))
+  (set-resource (G-widget "eeg2") :names '("EEG*")); :ignore '("EEG20" "EEG21"))
+  (set-resource (G-widget "misc") :names '("EEG1" "EEG2"));temporary
   (linklink '("file" "buf" "meg0" "ssp" "band-pass1" "meg" "meg8G" "disp1"))
   (linklink '("meg" "meg8M" "disp2"))
   (linklink '("meg" "meg-select"))
@@ -752,6 +800,8 @@
   (dolist (w (list "disp1" "disp2" "disp3" "disp4" "disp5"))
     (set-resource (G-widget w) :point 0 :length 10))
   (defchs)
+;  (defchs1) ; for VectorView
+  (defchs2) ; for neoTRIUX
   (defchpos)
   (set-resource (G-widget "meg1") :names gra-L-temporal)
   (setq ch (append gra-L-temporal gra-R-temporal gra-L-parietal gra-R-parietal 
@@ -768,6 +818,12 @@
 
 (defun initialize-hnsmeg-check()
   (if (not (G-widget "dislay" :quiet))(initialize-hnsmeg))
+)
+
+(defun isneotriux()
+  (let ((chname))
+    (setq chname (get-property (G-widget "buf") 0 :name))
+    (if (string-equal chname (string-left-trim "M" chname))(return t)(return nil)))
 )
 
 (defun intersect(a b)
@@ -1093,9 +1149,19 @@
     (longworking "done" 1 1))
 )
 
+(defun scan-max-gap()
+  (let ((w1)(w2)(t1)(t2)(gap))
+    (setq w1 (G-widget "buf") w2 (G-widget "src"))
+    (setq t1 (* (resource w1 :low-bound)(resource w1 :x-scale)))
+    (setq t2 (* (resource w2 :low-bound)(resource w2 :x-scale)))
+    (setq gap (- t1 t2))
+    (return gap))
+)
+
 (defun scan-max-go()
-  (let ((x)(w4)(t0)(t1)(span)(meg8)(mtx)(w (G-widget "src"))(v))
+  (let ((x)(w4)(t0)(t1)(span)(meg8)(mtx)(t00)(w (G-widget "src"))(v))
     (when (G-widget "src" :quiet)(progn
+      (setq t00 (sample-to-x (G-widget "buf") (resource (G-widget "buf") :low-bound) ))
       (setq x (x-selection (G-widget "plotter")))
       (if x 
         (progn
@@ -1103,6 +1169,7 @@
           (setq span (resource (G-widget "disp3") :length))
           (setq t1 (- t0 (/ span 2)))
           (setq w4 (list "disp1" "disp2" "disp3" "disp4" "disp5"))
+          (setq t1 (+ t1 t00))
           (dolist (w w4)(set-resource (G-widget w) :point t1))))
       (setq v (x-to-sample w (second x)))
       (if (< v 2)(setq v 2))
@@ -1115,7 +1182,7 @@
 )
 
 (defun scan-max-peak(span)
-  (let ((tmax)(tm)(t1)(t2)(names)(ignore)(meg8)(X)(k nil)(k8 nil)(kall nil)(w)(w1)(count 0)(ncount))
+  (let ((tmax)(tm)(t1)(t2)(meg8)(X)(k nil)(k8 nil)(kall nil)(w)(w1)(count 0)(ncount))
     (when (G-widget "meg" :quiet)(progn
       (setq w (G-widget "meg"))
       (setq w1 (require-widget :pick "scan-meg-peak"))
@@ -1129,7 +1196,8 @@
         (unless (longworking (format nil "scanning...~0,1f %%" (/ (* count 100) ncount)) count ncount)
           (error "interrupted"))
         (inc count)
-        (setq tm 0 k nil)
+        (setq tm (sample-to-x w (resource w :low-bound)))
+        (setq k nil)
         (set-resource w1 :names i)
         (link w w1)
         (while (< tm tmax)
@@ -1137,6 +1205,7 @@
           (setq tm (+ tm span))
           (if (> tm tmax)(setq tm tmax))
           (setq t2 (x-to-sample w tm))
+          (print (list t1 t2))
           (setq X (matrix-extent (get-data-matrix w1 t1 (- t2 t1))))
           (setq X (mapcar #'abs X))
           (setq X (eval (append (list 'max) X)))
@@ -1150,8 +1219,9 @@
 )
 
 (defun scan-max-peak-EEG(span)
-  (let ((tmax)(tm 0)(t1)(t2)(X)(k nil)(w)(count 0))
+  (let ((tmax)(tm)(t1)(t2)(X)(k nil)(w)(count 0))
     (setq w (widget-source (G-widget "disp4")))
+    (setq tm (sample-to-x w (resource w :low-bound)))
     (setq tmax (sample-to-x w (resource w :high-bound)))
     (while (< tm tmax)
       (setq t1 (x-to-sample w tm))
@@ -1164,9 +1234,10 @@
 )
 
 (defun scan-max-selection(ndip)
-  (let ((mtx)(x)(tm)(smp)(t0)(bnd)(span)(w))
+  (let ((mtx)(x)(tm)(smp)(t0)(bnd)(span)(w)(gap))
     (if (not (G-widget "src" :quiet))(error "Scan first!"))
     (setq w (G-widget "disp1"))
+    (setq gap (scan-max-gap))
     (setq smp (resource (G-widget "plotter") :x-scale))
     (setq span (/  (resource w :length) 2))
     (setq mtx (resource (G-widget "src") :matrix))
@@ -1178,6 +1249,7 @@
     (dotimes (i ndip)
       (unless (longworking "checking..." i ndip)(error "interrupted"))
       (setq t0 (* (nth i tm) smp))
+      (setq t0 (+ t0 gap))
       (set-resource w :point (- t0 span) :selection-start t0 :selection-length smp)
       (data-selection2 0.5));;large noise at one ch should be deleted...
     (longworking "done" 1 1))
@@ -1437,26 +1509,26 @@
     (set-max-scale (G-widget "disp3") nil)
     (set-max-scale (G-widget "disp5") t)
     (setq sc (resource (G-widget "disp1") :scales))
-    (setq my-gradiometer-scale (/ (car (matrix-mean sc)) 2.5))
+    (setq my-gradiometer-scale (car (matrix-mean sc)))
     (setq sc (resource (G-widget "disp2") :scales))
-    (setq my-magnetometer-scale(/ (car (matrix-mean sc)) 2.5))
-    (setq sc (resource (G-widget "disp3") :scales))
-    (setq my-eeg-scale (car (matrix-mean sc)))) 
+    (setq my-magnetometer-scale (car (matrix-mean sc)))
+    (setq sc (resource (G-widget "disp4") :scales))
+    (setq my-eeg-scale (car (matrix-mean sc)))
+    (return "finished")) 
 )
 
 (defun set-MEG-EEG-default-scale()
-  (let ((nch)(xx)(str)(ch))
+  (let ((nch)(xx)(str)(ch)(x 20))
     (setq nch (resource (G-widget "disp1") :channels))
-    (set-resource (G-widget "disp1") :scales (make-matrix nch 1 (*  my-gradiometer-scale 2.5)))
+    (set-resource (G-widget "disp1") :scales (make-matrix nch 1 my-gradiometer-scale))
     (setq nch (resource (G-widget "disp2") :channels))
-    (set-resource (G-widget "disp2") :scales (make-matrix nch 1 (*  my-magnetometer-scale 2.5)))
-    (set306offset)
+    (set-resource (G-widget "disp2") :scales (make-matrix nch 1 my-magnetometer-scale))
     (setq nch (resource (G-widget "disp3") :channels))
     (setq str (get-property (G-widget "disp3") 0 :name))
-    (setq ch (read-from-string (string-trim "MEG" str)))
+    (setq ch (read-from-string (string-left-trim "MEG" str)))
     (if (= 1 (mod ch 10))
-      (set-resource (G-widget "disp3") :scales (make-matrix nch 1 my-magnetometer-scale))
-      (set-resource (G-widget "disp3") :scales (make-matrix nch 1 my-gradiometer-scale)))
+      (set-resource (G-widget "disp3") :scales (make-matrix nch 1 (/ my-magnetometer-scale x)))
+      (set-resource (G-widget "disp3") :scales (make-matrix nch 1 (/ my-gradiometer-scale x))))
     (setq nch (resource (G-widget "disp4") :channels))
     (set-resource (G-widget "disp4") :scales (make-matrix nch 1 my-eeg-scale)))
 )
@@ -1583,4 +1655,20 @@
     ('b (print "b"))
     ("c" (print "c"));this does not work
     (otherwise (print "??")))
+)
+
+(defun test_read_real()
+  (setq filename "/home/neurosurgery/test.bin")
+  (setq fid (open filename :direction :input))
+  (setq x (read-real fid));;destructive
+  (close fid)
+)
+
+(defun test_matlab()
+  (system "matlab")
+)
+
+(defun test_python()
+  (system "pyhton")
+  (system "4+5");;it does not work
 )
