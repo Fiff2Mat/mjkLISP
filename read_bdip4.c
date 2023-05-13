@@ -6,31 +6,42 @@
 #include <stdint.h>
 #include <string.h>
 
-float getpfloat(unsigned char *pb, int n){
-    float x;
-    *((unsigned char *)&x)    =pb[n+3];
-    *(((unsigned char *)&x)+1)=pb[n+2];
-    *(((unsigned char *)&x)+2)=pb[n+1];
-    *(((unsigned char *)&x)+3)=pb[n];
-    return x;
+void getfloat(unsigned char* pb, float* pa){
+    unsigned char* ppa=(unsigned char*)pa;
+    *(ppa+0)=*(pb+3);
+    *(ppa+1)=*(pb+2);
+    *(ppa+2)=*(pb+1);
+    *(ppa+3)=*(pb+0);
 }
 
-int32_t getpint(unsigned char *pb, int n){
-    int32_t x;
-    *((unsigned char *)&x)    =pb[n+3];
-    *(((unsigned char *)&x)+1)=pb[n+2];
-    *(((unsigned char *)&x)+2)=pb[n+1];
-    *(((unsigned char *)&x)+3)=pb[n];
-    return x;
+void getfloat3(unsigned char* pb, float* pa){
+    unsigned char* ppa=(unsigned char*)pa;
+    int32_t n;
+    for(n=0;n<3;n++){
+        *(ppa+0)=*(pb+3);
+        *(ppa+1)=*(pb+2);
+        *(ppa+2)=*(pb+1);
+        *(ppa+3)=*(pb+0);
+        pb=pb+4;
+        ppa=ppa+4;
+    }
+}
+
+void getint32(unsigned char* pb, int32_t* pa){
+    unsigned char* ppa=(unsigned char*)pa;
+    *(ppa+0)=*(pb+3);
+    *(ppa+1)=*(pb+2);
+    *(ppa+2)=*(pb+1);
+    *(ppa+3)=*(pb+0);
 }
 
 int main(int argc, char *argv[]) {
     int i=0;
     unsigned char b[196];
-    int32_t dip,error_computed;
-    float begin,end;
+    int32_t dip,error_computed=0;
+    float begin, end=0;
     float r0[3],r[3],Q[3];
-    float gof,conf_vol;
+    float gof, conf_vol=0;
     // file open
     FILE *inputFile = fopen(argv[1], "rb"); // argv[0] is function itself
     FILE *outputFile = fopen(argv[2], "w"); // output as text file
@@ -42,21 +53,15 @@ int main(int argc, char *argv[]) {
 
     // reading BDIP file
     while (fread(b,sizeof(unsigned char),196,inputFile)>0){
-        //dip  =getpint(b,0);
-        begin=getpfloat(b,4);
-        end  =getpfloat(b,8);
-        r0[0]=getpfloat(b,12);
-        r0[1]=getpfloat(b,16);
-        r0[2]=getpfloat(b,20);
-        r[0] =getpfloat(b,24);
-        r[1] =getpfloat(b,28);
-        r[2] =getpfloat(b,32);
-        Q[0] =getpfloat(b,36);
-        Q[1] =getpfloat(b,40);
-        Q[2] =getpfloat(b,44);
-        gof  =getpfloat(b,48);
-        error_computed=getpint(b,52);
-        conf_vol=getpfloat(b,180);
+        getint32(&b[0],&dip);
+        getfloat(&b[4],&begin);
+        getfloat(&b[8],&end);
+        getfloat3(&b[12],r0);
+        getfloat3(&b[24],r);
+        getfloat3(&b[36],Q);
+        getfloat3(&b[48],&gof);
+        getint32(&b[52],&error_computed);
+        getfloat(&b[180],&conf_vol);
     
         begin=begin*1e+3;
         end=end*1e+3;
