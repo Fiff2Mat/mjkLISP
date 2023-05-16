@@ -3,13 +3,13 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2023-Jan-5 by Akira Hashizume
-;;   Releaesd on 2023-May-1
+;;   Releaesd on 2023-May-15
 ;;   This code shall be reloaded twice for establish xfit or ssp functions. 
 ;;   read_bdip built fro read_bdip4.c is used for reading BDIP file 
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
 ;;  Both hns_meg3.lsp and read_bdip4.c are uploaded in GitHub 
-;;  https://github.com/Fiff2Mat/mjkLISP/
+;;  /https:github.com/Fiff2Mat/mjkLISP/
 
 
 (defvar this-filename "/home/neurosurgery/lisp/hns_meg3"); "rewrite tihs value for each site)
@@ -60,8 +60,8 @@
     (setq disps (list (G-widget "disp1")(G-widget "disp2")(G-widget "disp3")(G-widget "disp4")(G-widget "disp5")))
     (when (G-widget "plotter" :quiet)(setq disps (append disps (list (G-widget "plotter")))))
     (if (= num 1)
-      (setq default-color "white" background "black" highlight "white" baseline-color "white")
-      (setq default-color "black" background "white" highlight "gray80" baseline-color "white"))
+      (setq default-color "white" background "black" highlight "white" baseline-color "gray80")
+      (setq default-color "black" background "white" highlight "gray80" baseline-color "gray80"))
     (dolist (w disps)(set-resource w :default-color default-color :background background
                                      :highlight highlight :baseline-color baseline-color)))
 )
@@ -98,18 +98,22 @@
 )
 
 (defun check-lowgof(gof)
-  (let ((x)(fid)(pathname1)(g)(tm)(xx nil))
-    (setq pathname (filename-directory this-filename))
-    (xfit-command "dipsave input.bdip")         ;; create input.bdip at /home/username 
-    (system (format nil "~aread_bdip" pathname));; create output.txt at the /home/username
-    (system "rm input.bdip")
-    (setq fid (open "output.txt" :direction :input))
+  (let ((x)(fid)(pathname)(filename)(inputname)(outputname)(i)(g)(tm)(xx nil))
+    (setq pathname (filename-directory this-filename)); location of read_bdip
+    (setq filename (resource (G-widget "file"):filename))
+    (setq filename (string-right-trim ".fif" filename))
+    (setq inputname (str-append filename "-tmp.bdip"))
+    (setq outputname (str-append filename "-tmp.txt"))
+    (xfit-command (format nil "dipsave ~a" inputname))
+    (system (format nil "~aread_bdip ~a ~a" pathname inputname outputname))
+    (system (format nil "rm ~a" inputname))
+    (setq fid (open outputname :direction :input))
     (dotimes (i 10000)
       (setq x (read-line-as-list fid))
       (if x (progn
         (setq tm (first x) g (nth 8 x))
         (if (< g gof)(setq xx (append xx (list (list tm g))))))))
-    (system "rm output.txt")
+    (system (format nil "rm ~a" outputname))
     (return xx))
 )
 
@@ -321,6 +325,7 @@
       '("noise epoch" (my-text-delete "noise"))
       '("ignored epoch" (my-text-delete "ignored"))
       '("near epochs" (my-text-delete-near 0.005))
+      '("low gof epochs" (my-text-delete "lowgof"))
       '("routine" (progn (my-text-delete "noise")(my-text-delete "ignored")(my-text-delete-near 0.005))))
     (make-menu menu "xfit size" nil
       '("100" (xfit-command "displaysize 100"))
@@ -329,6 +334,7 @@
       '("300" (xfit-command "displaysize 300"))
       '("400" (xfit-command "displaysize 400")))
     (add-button menu "neo/TRIUX/VectorView" '(defchs_execute))
+    (add-button menu "evoked 0.01 tick" '(evoke_view))
     (return menu))
 )
 
@@ -347,12 +353,13 @@
       '("according to channel" (progn (my-text-load-as-lisp 4)(my-text-load-as-lisp 3)))
       '("according to time" (progn (my-text-load-as-lisp 5)(my-text-load-as-lisp 4)))
       '("according to amplitude" (progn (my-text-load-as-lisp 4)(my-text-load-as-lisp 5))))
-    (make-menu menu "diple" nil
+    (make-menu menu "dipole" nil
       '("fit again" (reestimate-dipoles))
-      '("dipole to MriLab" (xfit-command "autosend_dipole on"))
-      '("dipole not to MriLab" (xfit-command "autosend_dipole off"))
+      ;'("dipole to MriLab" (xfit-command "autosend_dipole on")); does not work properly
+      ;'("dipole not to MriLab" (xfit-command "autosend_dipole off"))
       '("save dipoles" (dipsave))
-      '("load dipoles" (dipload)))
+      '("load dipoles" (dipload))
+      '("check low gof" (my-text-lowgof my-low-gof)))
       ;'("clear dipole" (xfit-command "dipclear")));; it does not work properly
     (add-button menu "memory info" '(memory-info-dialog))
     (return menu))
@@ -465,7 +472,7 @@
   (let ((tm (x-selection))(t1)(t2)(w)(data)(x)(datcol)(datcol2 nil)(ch)(t0)(str)(d1)(d2)(str))
     (setq t1 (first tm) t2 (second tm))
     (setq w (widget-source (G-widget "disp1")))
-    (print (list (x-to-sample w t1)(x-to-sample w t2)))
+    ;(print (list (x-to-sample w t1)(x-to-sample w t2)))
     (setq data (get-data-matrix w (x-to-sample w t1)(x-to-sample w t2)))
     (setq x (get-matrix-max data))
     (setq ch (get-property w (1- (second x)) :name)); 0 1 2 3 ...
@@ -630,11 +637,13 @@
 (defun define-my-parameter()
   (define-parameter-group 'my-parameter "my-parameters")
   (defuserparameters my-parameter 
-    (my-gradiometer-scale 3e-11 "gradometer scale" 'number)
-    (my-magnetometer-scale 3e-12 "magnetometer scale" 'number)
+    (my-low-gof 80)
+    (my-sensor-number 102 "sensor numbers for estimation (9~102)" 'number)
     (my-eeg-scale 1e-4 "EEG scale" 'number)
-    (my-sensor-number 102 "sensor numbers for estimation (9~102)" 'number))
+    (my-magnetometer-scale 3e-12 "magnetometer scale" 'number)
+    (my-gradiometer-scale 3e-11 "gradometer scale" 'number))
 )
+
 
 (defun dipload()
   (let ((name))
@@ -658,6 +667,20 @@
     (setq name (resource (G-widget "file") :filename))
     (setq name (strm-append (filename-directory name) "_" (filename-base name) ".bdip"))
     (xfit-command (format nil "dipsave ~a" name)))
+)
+
+(defun evoke_view()
+  (let ((w1)(w2)(ti)(base)(xspan))
+    (setq w1 (G-widget "disp1") w2 (G-widget "disp2"))
+    (if (< (resource (G-widget "disp1") :tick-interval) 0)
+      (setq ti 0.01 base t xspan t)
+      (setq ti -1   base nil xspan nil))
+    (set-resource w1 :tick-interval ti)
+    (set-resource w1 :show-baselines base)
+    (set-resource w1 :show-x-span xspan)
+    (set-resource w2 :tick-interval ti)
+    (set-resource w2 :show-baselines base)
+    (set-resource w2 :show-x-span xspan))
 )
 
 (defun execute1()
@@ -908,7 +931,7 @@
     (setq str1 (string-left-trim "zzz" str1))
     (XmTextSetString my-text903 str1)
     (XmTextSetInsertionPosition my-text903 999999999)
-    (my-text-insert2 (format nil "~a epoch deleted ~%" count)))
+    (my-text-insert2 (format nil "~a ~a  epoch deleted ~%" count str)))
 )
 
 (defun my-text-delete-near(span)
@@ -1066,6 +1089,32 @@
     (XmTextSetString my-text903 (string-left-trim "zzz" str0)))
 )
 
+(defun my-text-lowgof(gof)
+  (let ((bdip)(bdip1)(i)(j)(textline)(str0)(str1)(str2)(strm1)(strm2)(textline)(L)(l1))
+    (setq bdip (check-lowgof gof))
+    (if bdip (progn      
+      (setq bdip1 nil)
+      (dotimes (i (length bdip))(setq bdip1 (append bdip1 (list (/ (car (nth i bdip)) 1000)))))
+      (setq str0 (XmTextGetString my-text903)) 
+      (setq strm1 (make-string-input-stream str0))
+      (setq strm2 (make-string-input-stream str0))
+      (setq textline (my-text-line))
+      (setq str2 "zzz")
+      (dotimes (i (length textline))
+        (setq str1 (read-line strm1))
+        (setq L (nth 3 (read-line-as-list strm2)))
+        (if L (if (numberp L)(progn
+          (dolist (j bdip1)
+            (if (< (abs (- L j)) 0.1)
+              (setq str1 (format nil "~a lowgof" str1)))))))
+        (setq str2 (format nil "~a~a~%" str2 str1))
+        (gc))
+      (setq str2 (string-left-trim "zzz" str2))
+      (XmTextSetString my-text903 str2))))
+)
+
+;(my-text-lowgof 80)
+
 (defun my-text-peak-range(span)
   (let ((nL)(str)(strm)(strm2)(str2)(x)(x4)(y)(p0)(strs)(check))
     (setq nL (length (my-text-line2)))
@@ -1205,7 +1254,6 @@
           (setq tm (+ tm span))
           (if (> tm tmax)(setq tm tmax))
           (setq t2 (x-to-sample w tm))
-          (print (list t1 t2))
           (setq X (matrix-extent (get-data-matrix w1 t1 (- t2 t1))))
           (setq X (mapcar #'abs X))
           (setq X (eval (append (list 'max) X)))
@@ -1493,21 +1541,26 @@
     (set-resource w :scales x))
 )
 
+
 (defun set-MEG-EEG-default()
   (let ((x)(sc))
     (set306offset)
     (select-megch "L-temporal")
-    (select-eegch "banana")
-    (select-eegch "misc")
+    (if (> (resource (widget-source (G-widget "disp4")):channels) 0)
+      (select-eegch "banana"))
+    (if (> (resource (widget-source (G-widget "disp5")):channels) 0)
+      (select-eegch "misc"))
     (set-max-scale (G-widget "disp3") nil)
     (link (G-widget "meg8G")(G-widget "disp1"))
     (link (G-widget "meg8M")(G-widget "disp2"))
     ;(set306amp)
     (set-max-scale (G-widget "disp1") nil)
     (set-max-scale (G-widget "disp2") nil)
-    (set-max-scale (G-widget "disp4") nil)
     (set-max-scale (G-widget "disp3") nil)
-    (set-max-scale (G-widget "disp5") t)
+    (if (> (resource (widget-source (G-widget "disp4")):channels) 0)
+      (set-max-scale (G-widget "disp4") nil))
+    (if (> (resource (widget-source (G-widget "disp5")):channels) 0)
+      (set-max-scale (G-widget "disp5") t))
     (setq sc (resource (G-widget "disp1") :scales))
     (setq my-gradiometer-scale (car (matrix-mean sc)))
     (setq sc (resource (G-widget "disp2") :scales))
