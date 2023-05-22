@@ -3,7 +3,7 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2023-Jan-5 by Akira Hashizume
-;;   Releaesd on 2023-May-15
+;;   Releaesd on 2023-May-21
 ;;   This code shall be reloaded twice for establish xfit or ssp functions. 
 ;;   read_bdip built fro read_bdip4.c is used for reading BDIP file 
 ;;
@@ -461,6 +461,7 @@
     (setq data (get-data-matrix w (x-to-sample w t1)(x-to-sample w t2)))
     (setq x (get-matrix-max data))
     (setq ch (get-property w (1- (second x)) :name)); 0 1 2 3 ...
+    (setq ch (delete-ch-space ch))
     (setq t0 (+ t1 (sample-to-x w (1- (third x)))))
     (setq x (* (first x) 1e+13));T/m -> fT/cm
     (setq str (format nil "~%~0,4f   ~0,4f   ~a   ~0,4f   ~0,2f  " t1 t2 ch t0 x))
@@ -469,7 +470,7 @@
 
 (defun data-selection2(ratio)
 ;; one channel with big noise should be ignored
-  (let ((tm (x-selection))(t1)(t2)(w)(data)(x)(datcol)(datcol2 nil)(ch)(t0)(str)(d1)(d2)(str))
+  (let ((tm (x-selection))(t1)(t2)(w)(data)(x)(datcol)(datcol2 nil)(ch)(ch2)(t0)(str)(d1)(d2)(str))
     (setq t1 (first tm) t2 (second tm))
     (setq w (widget-source (G-widget "disp1")))
     ;(print (list (x-to-sample w t1)(x-to-sample w t2)))
@@ -479,7 +480,8 @@
     (setq t0 (+ t1 (sample-to-x w (1- (third x)))))
     (setq datcol (column (1- (third x)) data))
     (setq x (* (first x) 1e+13));T/m -> fT/cm
-    (setq str (format nil "~%~0,4f   ~0,4f   ~a   ~0,4f   ~0,2f  " t1 t2 ch t0 x))
+    (setq ch2 (delete-ch-space ch));;MEG 0123->MEG0123
+    (setq str (format nil "~%~0,4f   ~0,4f   ~a   ~0,4f   ~0,2f  " t1 t2 ch2 t0 x))
     (setq datcol (map-matrix datcol #'abs))
     (dotimes (i (length datcol))(setq datcol2 (append datcol2 (list (vref datcol i)))))
     (setq datcol (reverse (sort datcol2)))
@@ -644,6 +646,13 @@
     (my-gradiometer-scale 3e-11 "gradometer scale" 'number))
 )
 
+
+(defun delete-ch-space(megch)
+  (let ((chname))
+    (setq chname (string-left-trim "MEG " megch))
+    (setq chname (str-append "MEG" chname))
+    (return chname))
+)
 
 (defun dipload()
   (let ((name))
@@ -1310,7 +1319,7 @@
       (progn (setq EEGch t)(setq Y (scan-max-peak-EEG span))))
     (setq wsrc (require-widget :matrix-source "src"))
     (setq wplt (require-widget :plotter "plotter"))
-    ;(create-my-scan "plotter"); hard to handle & cause meny trouble as to Xt
+    (create-my-scan "plotter"); hard to handle & cause meny trouble as to Xt
     (setq wplt (G-widget "plotter"))
     (if EEGch 
       (set-resource wsrc :matrix (transpose (mat-append (transpose X)(transpose Y)))) 
