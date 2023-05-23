@@ -3,7 +3,7 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2023-Jan-5 by Akira Hashizume
-;;   Releaesd on 2023-May-21
+;;   Releaesd on 2023-May-22
 ;;   This code shall be reloaded twice for establish xfit or ssp functions. 
 ;;   read_bdip built fro read_bdip4.c is used for reading BDIP file 
 ;;
@@ -470,7 +470,7 @@
 
 (defun data-selection2(ratio)
 ;; one channel with big noise should be ignored
-  (let ((tm (x-selection))(t1)(t2)(w)(data)(x)(datcol)(datcol2 nil)(ch)(ch2)(t0)(str)(d1)(d2)(str))
+  (let ((tm (x-selection))(t1)(t2)(w)(data)(x)(datcol)(datcol2 nil)(ch)(t0)(str)(d1)(d2)(str))
     (setq t1 (first tm) t2 (second tm))
     (setq w (widget-source (G-widget "disp1")))
     ;(print (list (x-to-sample w t1)(x-to-sample w t2)))
@@ -480,8 +480,8 @@
     (setq t0 (+ t1 (sample-to-x w (1- (third x)))))
     (setq datcol (column (1- (third x)) data))
     (setq x (* (first x) 1e+13));T/m -> fT/cm
-    (setq ch2 (delete-ch-space ch));;MEG 0123->MEG0123
-    (setq str (format nil "~%~0,4f   ~0,4f   ~a   ~0,4f   ~0,2f  " t1 t2 ch2 t0 x))
+    (setq ch (delete-ch-space ch));;MEG 0123->MEG0123
+    (setq str (format nil "~%~0,4f   ~0,4f   ~a   ~0,4f   ~0,2f  " t1 t2 ch t0 x))
     (setq datcol (map-matrix datcol #'abs))
     (dotimes (i (length datcol))(setq datcol2 (append datcol2 (list (vref datcol i)))))
     (setq datcol (reverse (sort datcol2)))
@@ -572,6 +572,7 @@
 
 (defun defchs_execute()
   (if (isneotriux)(defchs2)(defchs1))
+  (set-resource (G-widget "misc") :names eeg-misc)
   (linklink '("band-pass2" "misc" "disp5"))
   (set-MEG-EEG-default)
   (if (isneotriux)(return "neoTRIUX")(return "VectorView")))
@@ -819,15 +820,11 @@
   (linklink '("buf" "band-pass3" "misc" "disp5"))
   (set-resource (G-widget "disp1") :ch-label-space -1)
   (set-resource (G-widget "disp2") :ch-label-space -1)
-  (set-resource (G-widget "disp1") :move-hook '(sync-view-2 "disp1" "disp2" "disp3" "disp4" "disp5"))
+  (set-resource (G-widget "disp1") :move-hook '(sync-view-disp3))
   (set-resource (G-widget "disp1") :select-hook '(sync-selection "disp1" "disp2" "disp3" "disp4" "disp5"))
-  (set-resource (G-widget "disp2") :move-hook '(sync-view-2 "disp2" "disp1" "disp3" "disp4" "disp5"))
   (set-resource (G-widget "disp2") :select-hook '(sync-selection "disp2" "disp1" "disp3" "disp4" "disp5"))
-  (set-resource (G-widget "disp3") :move-hook '(sync-view-2 "disp3" "disp1" "disp2" "disp4" "disp5"))
   (set-resource (G-widget "disp3") :select-hook '(sync-selection "disp3" "disp1" "disp2" "disp4" "disp5"))
-  (set-resource (G-widget "disp4") :move-hook '(sync-view-2 "disp4" "disp1" "disp2" "disp3" "disp5"))
   (set-resource (G-widget "disp4") :select-hook '(sync-selection "disp4" "disp1" "disp2" "disp3" "disp5"))
-  (set-resource (G-widget "disp5") :move-hook '(sync-view-2 "disp5" "disp1" "disp2" "disp3" "disp4"))
   (set-resource (G-widget "disp5") :select-hook '(sync-selection "disp5" "disp1" "disp2" "disp3" "disp4"))
   (dolist (w (list "disp1" "disp2" "disp3" "disp4" "disp5"))
     (set-resource (G-widget w) :point 0 :length 10))
@@ -1121,8 +1118,6 @@
       (setq str2 (string-left-trim "zzz" str2))
       (XmTextSetString my-text903 str2))))
 )
-
-;(my-text-lowgof 80)
 
 (defun my-text-peak-range(span)
   (let ((nL)(str)(strm)(strm2)(str2)(x)(x4)(y)(p0)(strs)(check))
@@ -1717,6 +1712,13 @@
     ('b (print "b"))
     ("c" (print "c"));this does not work
     (otherwise (print "??")))
+)
+
+(defun sync-view-disp3 ()
+  (let ((x))
+    (setq x (resource (G-widget "disp3") :length))
+    (set-resource (G-widget "disp1") :length x)
+    (sync-view-2 "disp1" "disp2" "disp3" "disp4" "disp5"))
 )
 
 (defun test_read_real()
