@@ -1,6 +1,5 @@
 (defun add-parameter(top left)
-  (let ((n)(frame001)(frame002)(frame001-label)(frame002-label)(label001)(label002)(label003)(label004)(label005)(label006)(label007)(radiobox001)(radiobox002));(form002)(form003))
-    (setq top 70 left 80)
+  (let ((n)(frame001)(frame002)(frame001-label)(frame002-label)(label001)(label002)(label003)(label004)(label005)(label006)(label007)(radiobox001)(radiobox002)(label101)(frame003)(frame003-label)(dispw)(disp));(form002)(form003))
     (setq pane001 (XmCreatePanedWindow form001 "pane001" (X-arglist) 0))
     (set-values pane001 :separatorOn 0 :sasIndent -1
      :topAttachment    XmATTACH_POSITION :topPosition top
@@ -13,9 +12,13 @@
     (setq form002 (make-form frame001 "form002"))
     (setq frame002 (make-frame pane001 "frame002"))
     (setq frame002-label (make-label frame002 "frame002-label" 
-      :labelString (XmString "stepwise sorting") :childType XmFRAME_TITLE_CHILD))   
+      :labelString (XmString "others") :childType XmFRAME_TITLE_CHILD))   
     (setq form003 (make-form frame002 "form003"))
-    (dolist (n (list pane001 frame001 frame001-label frame002 frame002-label form002 form003))(manage n))
+    (setq frame003 (make-frame pane001 "frame003"))
+    (setq frame003-label (make-label frame003 "frame003-label" 
+      :labelString (XmString "check waves") :childType XmFRAME_TITLE_CHILD))   
+    (setq form004 (make-form frame003 "form004"))    
+    (dolist (n (list pane001 frame001 frame001-label frame002 frame002-label form002 form003 frame003 frame003-label form004))(manage n))
     ;;MEG
     (setq text001 (make-text form002 "text001" :columns 6
       :topAttachment   XmATTACH_POSITION :topPosition    0
@@ -86,19 +89,60 @@
     (setq lead-coronal (XmCreateToggleButtonGadget radiobox002 "lead-coronal" (X-arglist) 0))
     (set-values lead-coronal :labelString (XmString "coronal") :set 0)
     (dolist (n (list text006 text007 text008 text009 label004 label005 label006 label007 radiobox002 lead-mono lead-banana lead-coronal))(manage n))
-    ;;stepwise sorting
+    ;;others
+    (setq label101 (make-label form003 "label101"  :labelString (XmString "stepwise sort[sec]")
+      :topAttachment  XmATTACH_FORM  :leftAttachment XmATTACH_FORM))
     (setq radiobox101 (XmCreateRadioBox form003 "radiobox101" (X-arglist) 0))
-    (set-values radiobox101 :leftAttachment XmATTACH_FORM :topAttachment XmATTACH_FORM :numColumns 3)
-    (setq stepwise1 (XmCreateToggleButtonGadget radiobox101 "0.5 sec" (X-arglist) 0))
-    (setq stepwise2 (XmCreateToggleButtonGadget radiobox101 "1.0 sec" (X-arglist) 0))
-    (setq stepwise3 (XmCreateToggleButtonGadget radiobox101 "2.0 sec" (X-arglist) 0))
+    (set-values radiobox101 :leftAttachment XmATTACH_FORM :numColumns 3
+      :topAttachment XmATTACH_WIDGET :topWidget label101)
+    (setq stepwise1 (XmCreateToggleButtonGadget radiobox101 "0.5" (X-arglist) 0))
+    (setq stepwise2 (XmCreateToggleButtonGadget radiobox101 "1.0" (X-arglist) 0))
+    (setq stepwise3 (XmCreateToggleButtonGadget radiobox101 "2.0" (X-arglist) 0))
     (set-values stepwise1 :set 1)
-    (progn
     (setq button101 (make-button form003 "button101" :labelString (XmString "stepwise scan")
       :topAttachment XmATTACH_WIDGET :topWidget radiobox101))
-    (manage button101)
-    )
-    (dolist (n (list stepwise1 stepwise2 stepwise3 radiobox101))(manage n))
+    (setq label102 (make-label form003 "label102" :labelString (XmString "number of peaks")
+      :topAttachment  XmATTACH_WIDGET :topWidget button101 :leftAttachment XmATTACH_FORM))
+    (setq radiobox102 (XmCreateRadioBox form003 "radiobox102" (X-arglist) 0))
+    (set-values radiobox102 :leftAttachment XmATTACH_FORM :numColumns 4
+      :topAttachment XmATTACH_WIDGET :topWidget label102)
+    (setq npeak1 (XmCreateToggleButtonGadget radiobox102  "10" (X-arglist) 0))
+    (setq npeak2 (XmCreateToggleButtonGadget radiobox102  "20" (X-arglist) 0))
+    (setq npeak3 (XmCreateToggleButtonGadget radiobox102  "50" (X-arglist) 0))
+    (setq npeak4 (XmCreateToggleButtonGadget radiobox102 "100" (X-arglist) 0))
+    (set-values npeak1 :set 1)
+    (setq button102 (make-button form003 "button102" :labelString (XmString "select peaks")
+      :topAttachment XmATTACH_WIDGET :topWidget radiobox102))
+    (dolist (n (list label101 stepwise1 stepwise2 stepwise3 radiobox101 button101 label102 radiobox102 npeak1 npeak2 npeak3 npeak4 button102))(manage n))
+    ;;wave-check
+    (setq button201 (make-button form004 "button201" :labelString (XmString "note")
+      :bottomAttachment XmATTACH_FORM 
+      :leftAttachment  XmATTACH_POSITION :leftPosition 0
+      :rightAttachment XmATTACH_POSITION :rightPosition 30))
+    (manage button201)
+    (if (G-widget "win-peak" :quiet)(GetDeleteWidget (G-widget "win-peak")))
+    (GtMakeObject 'data-window :name "win-peak")
+    (if (G-widget "disp-peak" :quiet)(GetDeleteWidget (G-widget "disp-peak")))
+    (setq disp (GtMakeObject 'plotter :name "disp-peak"
+      :display-parent form004 :no-controls t :point 0 :length 1 :superpose t))
+    (put disp :display-form form004)
+    (GtPopupEditor disp);; indispensable
+    (setq dispw (resource disp :display-widget))
+    (set-values dispw :resize 1
+      :topAttachment XmATTACH_FORM  :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget button201)
+    (setq button202 (make-button form004 "button202" :labelString (XmString "FIT")
+      :topAttachment XmATTACH_WIDGET  :topWidget dispw
+      :leftAttachment  XmATTACH_WIDGET   :leftWidget button201
+      :rightAttachment XmATTACH_POSITION :rightPosition 55))
+    (setq button203 (make-button form004 "button203" :labelString (XmString "note & FIT")
+      :topAttachment  XmATTACH_WIDGET  :topWidget dispw
+      :leftAttachment  XmATTACH_WIDGET :leftWidget button202
+      :rightAttachment XmATTACH_FORM))
+    (manage button202)(manage button203)
+    (link (G-widget "meg")(G-widget "win-peak"))
+    (link (G-widget "win-peak")(G-widget "disp-peak"))
+    (set-resource (G-widget "disp-peak") :select-hook '(sync-selection-4))
   )
 )
 
@@ -145,6 +189,16 @@
     (add-lisp-callback stepwise2    "valueChangedCallback" '(setq stepwise 1.0))
     (add-lisp-callback stepwise3    "valueChangedCallback" '(setq stepwise 2.0))
     (add-lisp-callback button101    "activateCallback" '(scan-max))
+    (add-lisp-callback npeak1    "valueChangedCallback" '(setq npeaks  10))
+    (add-lisp-callback npeak2    "valueChangedCallback" '(setq npeaks  20))
+    (add-lisp-callback npeak3    "valueChangedCallback" '(setq npeaks  50))
+    (add-lisp-callback npeak4    "valueChangedCallback" '(setq npeaks 100))
+  )
+)
+
+(defun assign-callback2()
+    (add-lisp-callback button98  "activateCallback" '(scan-zoom 0));;zoom-off
+    (add-lisp-callback button99  "activateCallback" '(scan-zoom 1));;zoom-on
   )
 )
 
@@ -171,8 +225,8 @@
 (defun change-color()
   (let ((n)(col)(disps))
     (setq col (resource (G-widget "disp001"):background))
-    (setq disps (list "disp001" "disp002" "disp003" "disp004" "disp005" "disp006" "disp007" "disp008" "disp009"))
-    (if (G-widget "scan-disp" :quiet)(setq disps (append disps (list "scan-disp"))))
+    (setq disps (list "disp001" "disp002" "disp003" "disp004" "disp005" "disp006" "disp007" "disp008" "disp009" "disp-peak"))
+    (if (G-widget "scan-disp" :quiet)(setq disps (append disps (list "scan-disp" "scan-disp2"))))
     (if (string-equal col  "black")
       (dotimes (n (length disps))
         (set-resource (G-widget (nth n disps)) :default-color "black" :background "white" :highlight "gray80" :baseline-color "gray80"))
@@ -219,77 +273,6 @@
     (change-scale-eeg)
   )
 )
-
-(defun create-memo()
-  (let ((n))
-    (setq form99 (make-form-dialog *application-shell* "form99" :autoUnmanage 0))
-    (set-values form99 :resize 1)
-    (setq frame99 (make-frame form99 "frame99" :resize 1
-      :topAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM
-      :leftAttachment XmATTACH_POSITION :leftPosition 70
-      :rightAttachment XmATTACH_FORM))
-    (setq memo99 (make-scrolled-text frame99 "memo99" :editMode XmMULTI_LINE_EDIT))
-    (set-values memo99 :editMode XmMULTI_LINE_EDIT :rows 20 :columns 30)
-    (set-values memo99 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM)
-    (setq memo98 (make-scrolled-text form99 "memo98" 
-      :editMode XmMULTI_LINE_EDIT :rows 13 :columns 30));;the height of controls of plotter
-    (setq text99 (XmCreateText form99 "text99" (X-arglist) 0))
-    (set-values text99 :topAttachment XmATTACH_WIDGET :topWidget memo98
-      :rightAttachment XmATTACH_WIDGET :rightWidget frame99
-      :columns 18 :marginHeight 1);; equals the controls of the plotter!
-    (dolist (n (list form99 frame99 memo99 memo98 text99))(manage n))
-    (setq text98 (XmCreateText form99 "text98" (X-arglist) 0))
-    (set-values text98
-      :topAttachment   XmATTACH_WIDGET :topWidget text99 ;:leftAttachment XmATTACH_FORM
-      :rightAttachment XmATTACH_WIDGET :rightWidget text99)
-    (dolist (n (list form99 frame99 memo99 memo98 text99 text98))(manage n))
-    (if (G-widget "scan-disp" :quiet)(GtDeleteWidget (G-widget "scan-disp")))
-    (setq scan-disp (GtMakeObject 'plotter :name "scan-disp" :point 0.0 :length 10 
-      :display-parent form99  :scroll-parent form99 :ch-label-space 80 :no-controls nil))
-    (put scan-disp :display-form form99)
-    (GtPopupEditor scan-disp)
-    (setq dispw (resource (G-widget "scan-disp") :display-widget))
-    (set-values dispw :resize 1
-     :topAttachment   XmATTACH_FORM  :bottomAttachment XmATTACH_FORM 
-     :leftAttachment  XmATTACH_FORM
-     :rightAttachment XmATTACH_POSITION :rightPosition 70)
-    (setq frame98 (make-frame form99 "frame98" :resize 1
-      :topAttachment XmATTACH_WIDGET :topWidget memo98 
-      :leftAttachment XmATTACH_WIDGET :leftWidget text98 
-      :rightAttachment XmATTACH_WIDGET :rightWidget frame99 
-      :bottomAttachment XmATTACH_FORM))
-    (manage frame98)
-    (setq form98 (make-form frame98 "form98"))
-    (manage form98)
-    (setq text97 (XmCreateText form98 "text97" (X-arglist) 0))
-    (set-values text97
-      :bottomAttachment XmATTACH_FORM
-      :leftAttachment   XmATTACH_POSITION :leftPosition 50
-      :rightAttachment  XmATTACH_FORM)
-    (manage text97)
-    (setq button99 (make-button form98 "button99" :labelString (XmString " FIT ")
-      :bottomAttachment XmATTACH_WIDGET :bottomWidget text97))
-    (manage button99)
-    (if (G-widget "scan-disp2" :quiet)(GtDeleteWidget (G-widget "scan-disp2")))
-    (setq scan-disp2 (GtMakeObject 'plotter :name "scan-disp2" :point 0.0 :length 0.1 
-      :display-parent form98  :scroll-parent form98 :ch-label-space 0 :no-controls t))
-    (put scan-disp2 :display-form form98)
-    (GtPopupEditor scan-disp2)
-    (setq dispw (resource (G-widget "scan-disp2") :display-widget))
-    (set-values dispw :resize 1
-      :topAttachment    XmATTACH_FORM
-      :leftAttachment   XmATTACH_FORM
-      :rightAttachment  XmATTACH_FORM
-      :bottomAttachment XmATTACH_WIDGET :bottomWidget button99)
-  )
-)
-
-(defun delete-memo()
-  (if (G-widget "scan-disp" :quiet)(GtDeleteWidget (G-widget "scan-disp")))
-  (if (G-widget "scan-disp2" :quiet)(GtDeleteWidget (G-widget "scan-disp2")))
-  (XtDestroyWidget form99)
-)
-
 
 (defun change-p0span()
   (let ((p0)(span)(n)(disp))
@@ -340,6 +323,126 @@
       (set-resource (G-widget (format nil "disp00~d" (1+ n))) :scales mtx))))
 )
 
+(defun create-memo()
+  (let ((n)(mid)(w)(label99))
+    (setq mid 60)
+    (setq form99 (make-form-dialog *application-shell* "form99" :autoUnmanage 0))
+    (set-values form99 :resize 1)
+    (setq menubar99 (make-menu-bar form99 "menubar99" :autounmanage 0
+      :topAttachment   XmATTACH_FORM 
+      :leftAttachment  XmATTACH_POSITION :leftPosition mid
+      :rightAttachment XmATTACH_POSITION :rightPosition 100))
+    (create-memo-menu menubar99)
+    (create-memo-buttons form99 menubar99 mid);;button97
+    (setq frame99 (make-frame form99 "frame99" :resize 1
+      :topAttachment XmATTACH_WIDGET :topWidget button97 :bottomAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_POSITION :leftPosition mid
+      :rightAttachment XmATTACH_FORM))
+    (setq frame99-label (make-label frame99 "frame99-label" :childType XmFRAME_TITLE_CHILD))
+    (set-values frame99-label  :labelString (XmString "  sec        span        sns          peak         fT/cm"))
+    (setq memo99 (make-scrolled-text frame99 "memo99" :editMode XmMULTI_LINE_EDIT))
+    (set-values memo99 :editMode XmMULTI_LINE_EDIT :rows 20 :columns 30)
+    (set-values memo99 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM)
+    (setq memo98 (make-scrolled-text form99 "memo98" 
+      :editMode XmMULTI_LINE_EDIT :rows 13 :columns 30));;the height of controls of plotter
+    (setq text99 (XmCreateText form99 "text99" (X-arglist) 0))
+    (set-values text99 :topAttachment XmATTACH_WIDGET :topWidget memo98
+      :rightAttachment XmATTACH_WIDGET :rightWidget frame99
+      :columns 18 :marginHeight 1);; equals the controls of the plotter!
+    (dolist (n (list form99 menubar99 frame99 frame99-label memo99 memo98 text99))(manage n))
+    (setq text98 (XmCreateText form99 "text98" (X-arglist) 0))
+    (set-values text98
+      :topAttachment   XmATTACH_WIDGET :topWidget text99 ;:leftAttachment XmATTACH_FORM
+      :rightAttachment XmATTACH_WIDGET :rightWidget text99)
+    (dolist (n (list form99 frame99 memo99 memo98 text99 text98))(manage n))
+    (if (G-widget "scan-disp" :quiet)(GtDeleteWidget (G-widget "scan-disp")))
+    (setq scan-disp (GtMakeObject 'plotter :name "scan-disp" :point 0.0 :length 10 
+      :display-parent form99  :scroll-parent form99 :ch-label-space 80 :no-controls nil))
+    (put scan-disp :display-form form99)
+    (GtPopupEditor scan-disp)
+    (setq dispw (resource (G-widget "scan-disp") :display-widget))
+    (set-values dispw :resize 1
+      :topAttachment   XmATTACH_FORM  :bottomAttachment XmATTACH_FORM 
+      :leftAttachment  XmATTACH_FORM
+      :rightAttachment XmATTACH_POSITION :rightPosition mid)
+    (set-values (resource (G-widget "scan-disp") :scroll-widget)
+      :resize 1
+      :topAttachment    XmATTACH_POSITION :topPosition 98
+      :bottomAttachment XmATTACH_FORM
+      :leftAttachment   XmATTACH_FORM
+      :rightAttachment  XmATTACH_POSITION :rightPosition mid)
+    (setq frame98 (make-frame form99 "frame98" :resize 1
+      :topAttachment XmATTACH_WIDGET :topWidget memo98 
+      :leftAttachment XmATTACH_WIDGET :leftWidget text98 
+      :rightAttachment XmATTACH_WIDGET :rightWidget frame99 
+      :bottomAttachment XmATTACH_FORM))
+    (setq form98 (make-form frame98 "form98"))
+    (setq text97 (XmCreateText form98 "text97" (X-arglist) 0))
+    (set-values text97
+      :bottomAttachment XmATTACH_FORM
+      :leftAttachment   XmATTACH_POSITION :leftPosition 50
+      :rightAttachment  XmATTACH_FORM)
+    (XmTextSetString text97 (format nil "~0,2f" dipspan))
+    (setq label99 (make-label form98 "label99" :labelString (XmString "length")
+      :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_WIDGET :rightWidget text97))
+    (manage label99)
+    (setq button99 (make-button form98 "button99" :labelString (XmString "zoom on")
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget text97))
+    (setq button98 (make-button form98 "button99" :labelString (XmString "zoom off")
+      :leftAttachment XmATTACH_WIDGET :leftWidget button99
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget text97))
+    (dolist (n (list frame98 form98 text97 button99 button98))(manage n))
+    (if (G-widget "scan-disp2" :quiet)(GtDeleteWidget (G-widget "scan-disp2")))
+    (setq scan-disp2 (GtMakeObject 'plotter :name "scan-disp2" :point 0.0 :length 0.1 
+      :display-parent form98  :scroll-parent form98 :ch-label-space 0 :no-controls t))
+    (put scan-disp2 :display-form form98)
+    (GtPopupEditor scan-disp2)
+    (setq dispw (resource (G-widget "scan-disp2") :display-widget))
+    (set-values dispw :resize 1
+      :topAttachment    XmATTACH_FORM
+      :leftAttachment   XmATTACH_FORM
+      :rightAttachment  XmATTACH_FORM
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget button99)
+    (if (G-widget "win-peak2" :quiet)(GtDeleteWidget (G-widget "win-peak2")))
+    (setq w (GtMakeObject 'data-window :name "win-peak2"))
+    (set-resource w :point 0)
+    (set-resource (G-widget "scan-disp2") :superpose t)
+    (link (G-widget "meg") w)
+    (link w (G-widget "scan-disp2"))
+    (assign-callback2)
+  )
+)
+
+(defun create-memo-buttons(form bar left)
+  (let ((n))
+    (setq button97 (make-button form "button97" :labelString (XmString "goto")
+      :topAttachment  XmATTACH_WIDGET   :topWidget bar
+      :leftAttachment XmATTACH_POSITION :leftPosition left))
+    (setq button96 (make-button form "button96" :labelString (XmString "full view")
+      :topAttachment  XmATTACH_WIDGET   :topWidget bar
+      :leftAttachment XmATTACH_WIDGET   :leftWidget button97))
+    (setq button95 (make-button form "button95" :labelString (XmString "note")
+      :topAttachment  XmATTACH_WIDGET   :topWidget bar
+      :leftAttachment XmATTACH_WIDGET   :leftWidget button96))
+    (setq button94 (make-button form "button94" :labelString (XmString "FIT")
+      :topAttachment  XmATTACH_WIDGET   :topWidget bar
+      :leftAttachment XmATTACH_WIDGET   :leftWidget button95))
+    (setq button93 (make-button form "button93" :labelString (XmString "note & FIT")
+      :topAttachment  XmATTACH_WIDGET   :topWidget bar
+      :leftAttachment XmATTACH_WIDGET   :leftWidget button94))
+    (dolist (n (list button97 button96 button95 button94 button93))(manage n))
+  )
+)
+
+(defun create-memo-menu(bar)
+  (let ((menus))
+    (setq menu1 (make-menu bar "menu"))
+    (setq menu2 (make-menu bar "waves"))
+    (setq menu3 (make-menu bar "display"))
+    (setq menu4 (make-menu bar "assorted"))
+  )
+)
+
 (defun create-widgets()
   (let ((w)(widget-name)(n)(gw)(L1)(L2))
     (progn
@@ -348,11 +451,13 @@
     (GtMakeObject 'ringbuffer :name "buf" :size 5000000)
     (GtMakeObject 'pick :name "MEG" :names '("MEG*"))
     (GtMakeObject 'fft-filter :name "MEG-fil" :pass-band '(band-pass 3 35))
+    (GtMakeObject 'pick :name "meg" :names '("MEG*"))
     (setq L1 (list "LT" "RT" "LP" "RP" "LO" "RO" "LF" "RF"))
     (setq L2 (list gra-L-temporal gra-R-temporal gra-L-parietal gra-R-parietal gra-L-occipital gra-R-occipital gra-L-frontal gra-R-frontal))
+    (link (G-widget "MEG-fil")(G-widget "meg"))
     (dotimes (n 8)(progn
       (setq gw (GtMakeObject 'pick :name (nth n L1) :names (nth n L2)))
-      (link (G-widget "MEG-fil") gw)
+      (link (G-widget "meg") gw)
       (link gw (G-widget (format nil "disp00~d" (1+ n))))))
     (GtMakeObject 'pick :name "EEGs" :names '("EEG*" "ECG*" "EOG*"))
     (GtMakeObject 'pick :name "EEG1")
@@ -427,6 +532,8 @@
   (defparameter EEG-coronal1 '("F7" "Fp1" "Fp2" "F7" "F3" "Fz" "F4" "T3" "C3" "Cz" "C4" "T5" "P3" "Pz" "T4" "T5" "O1" "O2"))
   (defparameter EEG-coronal2 '("Fp1" "Fp2" "F8" "F3" "Fz" "F4" "F8" "C3" "Cz" "C4" "T4" "P3" "Pz" "P4" "T6" "O1" "O2" "T6"))
   (defparameter stepwise 0.5)
+  (defparameter npeaks 10)
+  (defparameter dipspan 0.2)
 )
 
 (defun define-texts()
@@ -442,8 +549,15 @@
   )
 )
 
+(defun delete-memo()
+  (if (G-widget "scan-disp"  :quiet)(GtDeleteWidget (G-widget "scan-disp")))
+  (if (G-widget "scan-disp2" :quiet)(GtDeleteWidget (G-widget "scan-disp2")))
+  (if (G-widget "win-peak2"  :quiet)(GtDeleteWidget (G-widget "win-peak2")))
+  (XtDestroyWidget form99)
+)
+
 (defun initialize()
-  (let ((x1 49)(x2 98)(n))
+  (let ((x1 49)(x2 98)(n)(xx 60))
     (setq form001 (make-form *main-window* "form001"))
     (make-subplotter "disp001"   0  x1   0  20  "L-temporal")
     (make-subplotter "disp002"   0  x1  20  40  "L-parietal")
@@ -453,7 +567,7 @@
     (make-subplotter "disp006"  x1  x2  20  40  "R-parietal")
     (make-subplotter "disp007"  x1  x2  40  60  "R-occipital")
     (make-subplotter "disp008"  x1  x2  60  80  "R-frontal")
-    (make-subplotter "disp009"   0   70  80 100  "EEG ECG EOG")  
+    (make-subplotter "disp009"   0  xx  80 100  "EEG ECG EOG")  
     (set-values (resource (G-widget "disp001") :scroll-widget)
       "resizable" 1
       :topAttachment    XmATTACH_POSITION :topPosition     x2
@@ -465,10 +579,10 @@
     (manage form001);;This must be here!
     (define-parameters)
     (create-widgets)
-    (add-parameter 70 80)
+    (add-parameter xx 80)
     (define-texts)
     (assign-callback)
-    (create-memo)
+    ;(create-memo)
   )
 )
 
@@ -502,15 +616,16 @@
 )
 
 (defun run() 
-  ;!!SAMPLE Define target Fiff file inserting patient_name/date/epilepsy1.fif
-  (initialize)
-  (open-diskfile  "/data/neuro-data/ns/patient_name/date/epilepsy1.fif")
-  (change-coil "gra")
-  (change-leads "banana")
+  (let ((filename));;filename is tagert fiff file
+    (initialize)
+    (open-diskfile filename)
+    (change-coil "gra")
+    (change-leads "banana"))
 )
 
 (defun scan-max()
-  (let ((x-scale)(t0)(t1)(t2)(T1)(T2)(x)(mtx)(MTX nil))
+  (let ((x-scale)(t0)(t1)(t2)(T1)(T2)(x)(mtx)(MTX nil)(count)(tt))
+    (if (G-widget "scan-disp" :quiet)(delete-memo))
     (setq x-scale (resource (G-widget "buf") :x-scale)) 
     (setq t0 (* (resource (G-widget "buf") :low-bound) x-scale))
     (setq tend (* (resource (G-widget "buf") :high-bound) x-scale))
@@ -519,7 +634,9 @@
     (setq swin (require-widget :data-window "swin"))
     (setq meg8 (list "LT" "RT" "LP" "RP" "LO" "RO" "LF" "RF"))
     (change-coil "gra")
+    (setq count 0)
     (dolist (seg  meg8)
+      (unless (longworking "scanning...." count 8)(error "interrupted"))
       (link (G-widget seg) swin)
       (setq t1 t0)
       (setq mtx nil)
@@ -532,37 +649,73 @@
         (setq x (matrix-extent (get-data-matrix swin T1 T2)))
         (setq mtx (append mtx (list (max (abs (first x))(abs (second x))))))
         (setq t1 t2))
+      (inc count)
       (setq MTX (append MTX (list mtx))))
-    ;(print (matrix MTX))
+    (longworking "done" 8 8)
     (GtDeleteWidget (G-widget "swin"))
     (setq src (require-widget :matrix-source "scan-source"))
-    (set-resource src :matrix (matrix MTX))
-    ;(setq scan-disp (require-widget :plotter "scan-disp"))
+    (setq MTX (matrix MTX))
+    (set-resource src :matrix MTX :x-scale stepwise :x-unit "s")
+    (create-memo)
     (link src scan-disp)
     (GtPopupEditor scan-disp)
     (dotimes (n 8)(set-property scan-disp n :name (nth n meg8)))
     (set-resource scan-disp :ch-label-space 40 :offsets (make-matrix 8 1 0.9))
-    (set-resource scan-disp :x-scale stepwise :x-unit "s")
     (set-resource scan-disp :default-color  (resource (G-widget "disp001") :default-color))
     (set-resource scan-disp :background     (resource (G-widget "disp001") :background))
     (set-resource scan-disp :highlight      (resource (G-widget "disp001") :highlight))
     (set-resource scan-disp :baseline-color (resource (G-widget "disp001") :baseline-color))
     (set-resource scan-disp :select-hook '(scan-select-hook))
+    (setq tt (* (array-dimension MTX 1) stepwise))
+    (set-resource scan-disp :point 0)
+    (set-resource scan-disp :length tt)
+    (setq tt (apply #'max (mapcar #'abs (matrix-extent MTX))))
+    (set-resource scan-disp :scales (make-matrix 8 1 (/ tt 1.8)))
   )
 )
 
 (defun scan-select-hook()
-  (let ((w)(w1)(t0)(t1)(span)(gap))
+  (let ((w)(w1)(t0)(tspan)(t1)(t2)(span)(gap)(mtx)(x)(nch))
     (setq w  (G-widget "scan-disp"))
     (setq w1 (G-widget "buf"))
-    (setq t0 (+ (resource w :selection-start)(/ (resource w :selection-length) 2)))
+    (setq t0    (resource w :selection-start))
+    (setq tspan (resource w :selection-length))
+    (if (> tspan 0)(setq t0 (+ t0 (/ tspan 2))))
     (setq span (read-from-string (XmTextGetString text002)))
     (setq t1 (- t0 (/ span 2)))
     (setq gap (* (resource w1 :low-bound)(resource w1 :x-scale)))
-    (setq t1 (+ t1 gap))
-    (XmTextSetString text001 (format nil "~0,2f" t1))
+    (setq t2 (+ t1 gap))
+    (XmTextSetString text001 (format nil "~0,2f" t2))
+
+    (setq w  (G-widget "win-peak2"))
+    (setq w1 (G-widget "scan-disp2"))
+    (setq tspan (read-from-string (XmTextGetString text97)))
+    (set-resource w :point (- t1 (/ tspan)) :end tspan)
+    (link (G-widget "meg") w)
+    (link w w1)
+    (set-resource w1 :point 0 :length tspan)
+    (setq mtx (get-data-matrix w 0 (resource w :high-bound)))
+    (setq x (apply #'max (mapcar #'abs (matrix-extent mtx))))
+    (setq nch (resource w :channels))
+    (set-resource w1 :scales (make-matrix nch 1 x))))
+    )
+)
+
+
+(defun scan-zoom(n)
+  (let ((t1)(t2)(w)(w1))
+    (setq w (G-widget "scan-disp"))
+    (if (equal n 0) (progn
+      (setq w1 (G-widget "scan-source"))
+      (setq t1 0 t2 (array-dimension (resource w1 :matrix) 1))
+      (setq t2 (* t2 (resource w1 :x-scale))))
+      (progn 
+        (setq t1 (resource w :selection-start) t2 (resource w :selection-length))
+      ))
+    (set-resource w :point t1 :length t2 :selection-start -1 :selection-length -1)
   )
 )
+
 
 (defun set-eegchname()
   (let ((n)(nch))
@@ -572,24 +725,45 @@
 )
 
 (defun sync-selection-3(disp)
-  (let ((p0)(span)(disps (list "disp001" "disp002" "disp003" "disp004" "disp005" "disp006" "disp007" "disp008" "disp009"))(n))
+  (let ((p0)(span)(disps (list "disp001" "disp002" "disp003" "disp004" "disp005" "disp006" "disp007" "disp008" "disp009"))(n)(w)(mtx)(nch))
     (setq p0   (resource (G-widget disp) :selection-start))
     (setq span (resource (G-widget disp) :selection-length))
     (dolist (n disps)(if (not (equal disp n))
       (set-resource (G-widget n) :selection-start p0 :selection-length span)))
+    (if (> span 0)(progn
+      (setq w (G-widget "meg"))
+      (set-resource (G-widget "win-peak") :point p0 :start 0 :end span)
+      (link (G-widget "win-peak")(G-widget "disp-peak"))
+      (set-resource (G-widget "disp-peak") :point 0 :length span)
+      (setq w (G-widget "win-peak"))
+      (setq mtx (get-data-matrix w 0 (x-to-sample w span)))
+      (setq n (matrix-extent mtx))
+      (setq n (apply #'max (mapcar #'abs n)))
+      (setq nch (resource w :channels))
+      (set-resource (G-widget "disp-peak") :scales (make-matrix nch 1 n)))) 
+  )
+)
+
+(defun sync-selection-4()
+  (let ((n)(p0)(p1)(span))    
+    (setq p1   (resource (G-widget "win-peak") :point))
+    (setq p0   (resource (G-widget "disp-peak") :selection-start))
+    (setq span (resource (G-widget "disp-peak") :selection-length))
+    (dotimes (n 9)
+      (set-resource (G-widget (format nil "disp00~d" (1+ n))) :selection-start (+ p1 p0) :selection-length span))
   )
 )
 
 (defun sync-view-3(disp)
-  (let ((p0)(span)(n)(disp001 (G-widget "disp001")))
+  (let ((p0)(p1)(span)(n)(disp001 (G-widget "disp001")))
     (setq p0   (resource (G-widget disp) :point))
     (setq span (resource (G-widget disp) :length))
     (setq p0   (/ (round (* p0 100)) 100))
     (setq span (/ (round (* span 100)) 100))
     (XmTextSetString text001 (format nil "~0,2f" p0))
     (XmTextSetString text002 (format nil "~0,2f" span))
-    (dotimes (n 8)
-      (set-resource (G-widget (format nil "disp00~d" (+ n 2))) :point p0 :length span))
+    (dotimes (n 9)
+      (set-resource (G-widget (format nil "disp00~d" (1+ n))) :point p0 :length span))
   )
 )
 
