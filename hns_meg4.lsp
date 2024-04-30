@@ -149,7 +149,6 @@
 (defun apply-ssp()
   (let ((filename (resource (G-widget "file"):filename)))
     (if (not (string-equal (filename-extension filename) "fif"))
-      (setq filename "/neuro/dacq/setup/ssp/online-0.fif"))
     (GtOrganizePanel)
     (graph::ssp-popup)
     (graph::ssp-load-file filename)
