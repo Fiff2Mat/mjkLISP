@@ -1,7 +1,7 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2024-April... by Akira Hashizume
-;;   Releaesd on 2024-May...
+;;   Releaesd on 2024-May 6th
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
 ;;  This hns_meg4.lsp is uploaded in GitHub 
@@ -234,7 +234,10 @@
     (add-lisp-callback npeak2    "valueChangedCallback" '(setq npeaks  20))
     (add-lisp-callback npeak3    "valueChangedCallback" '(setq npeaks  50))
     (add-lisp-callback npeak4    "valueChangedCallback" '(setq npeaks 100))
-    (add-lisp-callback button201    "activateCallback" '(memo-note memo98))
+    (add-lisp-callback button201    "activateCallback" '(memo-note))  
+    (add-lisp-callback button202 "activateCallback" '(fit-select))
+    (add-lisp-callback button203 "activateCallback" '(progn(memo-note memo)(fit-select)))  
+
   )
 )
 
@@ -242,6 +245,7 @@
 (defun assign-callback2()
     (add-lisp-callback button98  "activateCallback" '(scan-zoom 0));;zoom-off
     (add-lisp-callback button99  "activateCallback" '(scan-zoom 1));;zoom-on
+    (add-lisp-callback button97  "activateCallback" '(scan-focus));;focus
   )
 )
 
@@ -319,7 +323,7 @@
       (setq S0 (/ S0 nch))
       (setq str2 (format nil "magnetometer  ~0,2f fT" (* S0 1e+15)))
       ;;final
-      (memo-add memo99 (format nil "~a~%~a~%~a" str0 str1 str2))))
+      (memo-add memo0 (format nil "~a~%~a~%~a" str0 str1 str2))))
   )
 )
 
@@ -444,7 +448,7 @@
       (set-resource (G-widget (format nil "disp00~d" (1+ n))) :scales mtx))))
 )
 
-(defun create-memo()
+(defun create-memo-old()
   (let ((n)(mid)(w)(label99)(nemubar99)(frame99)(frame99-label)(text99)(text98)(pane99)(memo96))
     (if (G-widget "scan-disp" :quiet)(delete-memo))   
     (setq mid 55)
@@ -471,153 +475,184 @@
     (create-memo2 frame98)
     (create-memo3 frame97)
     (dolist (n (list form99 pane99 frame99 frame98 frame97))(manage n))
-    (setq pos (create-memo4 form99 pane99 memo96));;invisible structure
+    (setq pos (create-memo4 form99 pane99  memo96));;invisible structure
     (create-memo5 form99 pane99);;scaned gra waves
     (create-memo6 form99 memo96 pos pane99);top left right
     (add-button *user-menu* "show my-memo" '(manage form99))
   ) 
 )
 
-(defun create-memo1(frame)
-  (let ((n)(form)(label));;memo99
+(defun create-memo()
+  (let ((n)(menubar01)(frame01)(form02)(buttons)(memo01)(pane01)(frame02)(frame03)(frame04)(pos))
+    (if (G-widget "scan-disp" :quiet)(delete-memo))   
+    (setq mid 55)
+    (setq form99 (make-form-dialog *application-shell* "form99" :autoUnmanage 0 :ersize 1))
+    (setq menubar01 (make-menu-bar form99 "menubar99" :autounmanage 0
+      :topAttachment   XmATTACH_FORM 
+      :leftAttachment  XmATTACH_POSITION :leftPosition mid
+      :rightAttachment XmATTACH_POSITION :rightPosition 100))
+    (create-memo-menu menubar01)
+    (manage menubar01)    
+    (setq frame01 (make-frame form99 "frame01"
+      :topAttachment  XmATTACH_WIDGET :topWidget menubar01
+      :leftAttachment XmATTACH_POSITION :leftPosition mid
+      :rightAttachment XmATTACH_FORM))
+    (setq form02 (make-form frame01 "form02"))
+    (setq buttons (create-memo-buttons form02))
+    (setq memo99 (make-scrolled-text form99 "memo99" 
+      :editMode XmMULTI_LINE_EDIT :rows 13 :columns 30));;the height of controls of plotter
+    (manage memo99);;this must be here!!
+    (dolist (n (list form99 menubar01 frame01 form02))(manage n))
+    (setq pane01 (XmCreatePanedWindow form99 "pane01" (X-arglist) 0))
+    (set-values pane01 
+      :leftAttachment  XmATTACH_POSITION :leftPosition mid
+      :topAttachment   XmATTACH_WIDGET   :topWidget        frame01
+      :rightAttachment XmATTACH_FORM     :bottomAttachment XmATTACH_FORM)
+    (setq frame02 (make-frame pane01 "frame02"));miscellaneous
+    (setq frame03 (make-frame pane01 "frame03"));memo1
+    (setq frame04 (make-frame pane01 "frame04"));memo2
+    (setq memo0 (create-memo1 frame02));memo0
+    (setq memo1 (create-memo2 frame03));memo1  memo01??invalid???
+    (setq memo2 (create-memo2 frame04));memo2
+    (dolist (n (list frame02 frame03 frame04 pane01))(manage n))
+    (setq pos (create-memo4 form99 pane01 memo99));;invisible structure    
+    (create-memo5 form99 pane01);;scaned gra waves
+    (create-memo6 form99 memo99 pos pane01);top left right    
+    (add-lisp-callback nmenu1  "valueChangedCallback" '(setq nmemo memo1))
+    (add-lisp-callback nmenu2  "valueChangedCallback" '(setq nmemo memo2))
+    (setq nmemo memo1)
+    (add-button *user-menu* "show my-memo" '(manage form99))
+  )
+)
+
+(defun create-memo1(frame);;memo99
+  (let ((n)(form)(label)(memo));;
     (setq form (make-form frame "form"))
     (setq label (make-label frame "label" :childType XmFRAME_TITLE_CHILD 
       :labelString (XmString "miscellaneous")))
-    (setq memo99 (make-scrolled-text frame "memo99" :editMode XmMULTI_LINE_EDIT
+    (setq memo (make-scrolled-text frame "memo" :editMode XmMULTI_LINE_EDIT
       :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM))
-    (dolist (n (list form label  memo99))(manage n))
+    (dolist (n (list form label  memo))(manage n))
+    (return memo)
+  )
+)
+
+(defun create-memo2old(frame);;memo98
+  (let ((n)(form)(button1)(button2)(button3)(button4)(button5)(frame1)(frame1-label)(memo))
+    (setq form (make-form frame "form"))
+    (setq button1 (make-button form "button1" :labelString (XmString "goto")
+      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_FORM))
+    (setq button2 (make-button form "button2" :labelString (XmString "full view")
+      :topAttachment   XmATTACH_FORM 
+      :leftAttachment  XmATTACH_WIDGET :leftWidget button1))
+    (setq button3 (make-button form "button3" :labelString (XmString "note")
+      :topAttachment   XmATTACH_FORM
+      :leftAttachment  XmATTACH_WIDGET :leftWidget button2))
+    (setq button4 (make-button form "button4" :labelString (XmString "FIT")
+      :leftAttachment  XmATTACH_WIDGET :leftWidget button3))
+    (setq button5 (make-button form "button5" :labelString (XmString "note & FIT")
+      :leftAttachment  XmATTACH_WIDGET :leftWidget button4))
+    (setq frame1 (make-frame form "frame1" :resize 1
+      :topAttachment    XmATTACH_WIDGET :topWidget button1
+      :leftAttachment   XmATTACH_FORM   :rightAttachment XmATTACH_FORM
+      :bottomAttachment XmATTACH_FORM))
+    (setq frame1-label (make-label frame1 "frame1-label" :childType XmFRAME_TITLE_CHILD))
+    (set-values frame1-label 
+      :labelString (XmString "  sec        span        sns          peak         fT/cm"))
+    (setq memo (make-scrolled-text frame1 "memo" :editMode XmMULTI_LINE_EDIT
+      :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM))
+    (dolist (n (list form button1 button2 button3 button4 button5 frame1 frame1-label memo))(manage n))
+    (add-lisp-callback button1 "activateCallback" '(goto memo98))
+    (add-lisp-callback button2 "activateCallback" '(full-view))
+    (add-lisp-callback button3 "activateCallback" '(memo-note memo))
+    (add-lisp-callback button4 "activateCallback" '(fit-select))
+    (add-lisp-callback button5 "activateCallback" '(progn(memo-note memo)(fit-select)))
+    (return memo)
   )
 )
 
 (defun create-memo2(frame);;memo98
-  (let ((n)(form)(button1)(button2)(button3)(button4)(button5)(frame1)(frame1-label))
+  (let ((n)(form)(button1)(button2)(button3)(button4)(button5)(frame1)(frame1-label)(memo))
     (setq form (make-form frame "form"))
-    (setq button1 (make-button form "button1" :labelString (XmString "goto")
-      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_FORM))
-    (setq button2 (make-button form "button2" :labelString (XmString "full view")
-      :topAttachment   XmATTACH_FORM 
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button1))
-    (setq button3 (make-button form "button3" :labelString (XmString "note")
-      :topAttachment   XmATTACH_FORM
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button2))
-    (setq button4 (make-button form "button4" :labelString (XmString "FIT")
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button3))
-    (setq button5 (make-button form "button5" :labelString (XmString "note & FIT")
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button4))
     (setq frame1 (make-frame form "frame1" :resize 1
-      :topAttachment    XmATTACH_WIDGET :topWidget button1
+      :topAttachment    XmATTACH_FORM
       :leftAttachment   XmATTACH_FORM   :rightAttachment XmATTACH_FORM
       :bottomAttachment XmATTACH_FORM))
     (setq frame1-label (make-label frame1 "frame1-label" :childType XmFRAME_TITLE_CHILD))
     (set-values frame1-label 
       :labelString (XmString "  sec        span        sns          peak         fT/cm"))
-    (setq memo98 (make-scrolled-text frame1 "memo99" :editMode XmMULTI_LINE_EDIT
+    (setq memo (make-scrolled-text frame1 "memo" :editMode XmMULTI_LINE_EDIT
       :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM))
-    (dolist (n (list form button1 button2 button3 button4 button5 frame1 frame1-label memo98))(manage n))
-    (add-lisp-callback button1 "activateCallback" '(goto memo98))
-    (add-lisp-callback button2 "activateCallback" '(full-view))
-    (add-lisp-callback button3 "activateCallback" '(memo-note memo98))
-    (add-lisp-callback button4 "activateCallback" '(fit-select))
-    (add-lisp-callback button5 "activateCallback" '(progn(memo-note memo98)(fit-select)))
+    (dolist (n (list form frame1 frame1-label memo))(manage n))
+    (return memo)
   )
 )
-
-(defun create-memo3(frame);;memo97
-  (let ((n)(form)(button1)(button2)(button3)(button4)(button5)(frame1)(frame1-label))
-    (setq form (make-form frame "form"))
-    (setq button1 (make-button form "button1" :labelString (XmString "goto")
-      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_FORM))
-    (setq button2 (make-button form "button2" :labelString (XmString "full view")
-      :topAttachment   XmATTACH_FORM 
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button1))
-    (setq button3 (make-button form "button3" :labelString (XmString "note")
-      :topAttachment   XmATTACH_FORM
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button2))
-    (setq button4 (make-button form "button4" :labelString (XmString "FIT")
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button3))
-    (setq button5 (make-button form "button5" :labelString (XmString "note & FIT")
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button4))
-    (setq frame1 (make-frame form "frame1" :resize 1
-      :topAttachment    XmATTACH_WIDGET :topWidget button1
-      :leftAttachment   XmATTACH_FORM   :rightAttachment XmATTACH_FORM
-      :bottomAttachment XmATTACH_FORM))
-    (setq frame1-label (make-label frame1 "frame1-label" :childType XmFRAME_TITLE_CHILD))
-    (set-values frame1-label 
-      :labelString (XmString "  sec        span        sns          peak         fT/cm"))
-    (setq memo97 (make-scrolled-text frame1 "memo99" :editMode XmMULTI_LINE_EDIT
-      :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM))
-    (dolist (n (list form button1 button2 button3 button4 button5 frame1 frame1-label memo97))(manage n))
-    (add-lisp-callback button1 "activateCallback" '(goto memo97))
-    (add-lisp-callback button2 "activateCallback" '(full-view))
-    (add-lisp-callback button3 "activateCallback" '(memo-note memo97))
-    (add-lisp-callback button4 "activateCallback" '(fit-select))
-    (add-lisp-callback button5 "activateCallback" '(progn(memo-note memo97)(fit-select)))   
-  )
-)
-
-(defun create-memo4(form99 pane99 memo96)
-  (let ((text99)(text98))
-    (setq text99 (XmCreateText form99 "text99" (X-arglist) 0))
-    (set-values text99 :topAttachment XmATTACH_WIDGET :topWidget memo96
-      :rightAttachment XmATTACH_WIDGET :rightWidget frame99
+(defun create-memo4(form pane memo)
+  (let ((text01)(text02))
+    (setq text01 (XmCreateText form "text01" (X-arglist) 0))
+    (set-values text01 :topAttachment XmATTACH_WIDGET :topWidget memo
+      :rightAttachment XmATTACH_WIDGET :rightWidget pane
       :columns 18 :marginHeight 1);; equals the controls of the plotter!
-    (setq text98 (XmCreateText form99 "text98" (X-arglist) 0))
-    (set-values text98
-      :topAttachment   XmATTACH_WIDGET :topWidget text99 ;:leftAttachment XmATTACH_FORM
-      :rightAttachment XmATTACH_WIDGET :rightWidget text99)
-    (dolist (n (list text99 text98))(manage n))
-    (return text98)
+    (setq text02 (XmCreateText form "text02" (X-arglist) 0))
+    (set-values text02
+      :topAttachment   XmATTACH_WIDGET :topWidget text01 ;:leftAttachment XmATTACH_FORM
+      :rightAttachment XmATTACH_WIDGET :rightWidget text01)
+    (dolist (n (list text01 text02))(manage n))
+    (return text02)
   )
 )
 
-(defun create-memo5(form99 pane99)
+(defun create-memo5(form pane)
   (let ((dispw))
     (if (G-widget "scan-disp" :quiet)(GtDeleteWidget (G-widget "scan-disp")))
     (setq scan-disp (GtMakeObject 'plotter :name "scan-disp" :point 0.0 :length 10 
-      :display-parent form99  :scroll-parent form99 :ch-label-space 80 :no-controls nil))
-    (put scan-disp :display-form form99)
+      :display-parent form  :scroll-parent form :ch-label-space 80 :no-controls nil))
+    (put scan-disp :display-form form)
     (GtPopupEditor scan-disp)
     (setq dispw (resource (G-widget "scan-disp") :display-widget))
     (set-values dispw :resize 1
       :topAttachment   XmATTACH_FORM  :bottomAttachment XmATTACH_FORM 
       :leftAttachment  XmATTACH_FORM
-      :rightAttachment XmATTACH_WIDGET :rightWidget pane99)
+      :rightAttachment XmATTACH_WIDGET :rightWidget pane)
     (set-values (resource (G-widget "scan-disp") :scroll-widget)
       :resize 1
       :topAttachment    XmATTACH_POSITION :topPosition 98
       :bottomAttachment XmATTACH_FORM
       :leftAttachment   XmATTACH_FORM
-      :rightAttachment  XmATTACH_WIDGET :rightPosition pane99)
+      :rightAttachment  XmATTACH_WIDGET :rightPosition pane)
   )
 )
 
-(defun create-memo6(form99 memo96 text98 pane99)
-  (let ((n)(dispw)(w)(frame96)(label99));form96
-    (setq frame96 (make-frame form99 "frame96" :resize 1
-      :topAttachment XmATTACH_WIDGET :topWidget memo96 
-      :leftAttachment XmATTACH_WIDGET :leftWidget text98 
-      :rightAttachment XmATTACH_WIDGET :rightWidget pane99 
+(defun create-memo6(form memo text pane)
+  (let ((n)(dispw)(w)(frame01)(form01)(label01));form96
+    (setq frame01 (make-frame form "frame01" :resize 1
+      :topAttachment XmATTACH_WIDGET :topWidget memo 
+      :leftAttachment XmATTACH_WIDGET :leftWidget text
+      :rightAttachment XmATTACH_WIDGET :rightWidget pane 
       :bottomAttachment XmATTACH_FORM))
-    (setq form96 (make-form frame96 "form96"))
-    (setq text97 (XmCreateText form96 "text97" (X-arglist) 0))
+    (setq form01 (make-form frame01 "form01"))
+    (setq text97 (XmCreateText form01 "text97" (X-arglist) 0))
     (set-values text97
       :bottomAttachment XmATTACH_FORM
       :leftAttachment   XmATTACH_POSITION :leftPosition 50
       :rightAttachment  XmATTACH_FORM)
     (XmTextSetString text97 (format nil "~0,2f" dipspan))
-    (setq label99 (make-label form96 "label99" :labelString (XmString "length")
+    (setq label01 (make-label form01 "label01" :labelString (XmString "length")
       :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_WIDGET :rightWidget text97))
-    (manage label99)
-    (setq button99 (make-button form96 "button99" :labelString (XmString "zoom")
+    (manage label01)
+    (setq button99 (make-button form01 "button99" :labelString (XmString "zoom")
       :bottomAttachment XmATTACH_WIDGET :bottomWidget text97))
-    (setq button98 (make-button form96 "button99" :labelString (XmString "reset")
+    (setq button98 (make-button form01 "button98" :labelString (XmString "reset")
       :leftAttachment XmATTACH_WIDGET :leftWidget button99
       :bottomAttachment XmATTACH_WIDGET :bottomWidget text97))
-    (dolist (n (list frame96 form96 text97 button99 button98))(manage n))
+    (setq button97 (make-button form01 "button97" :labelString (XmString "focus")
+      :leftAttachment XmATTACH_WIDGET :leftWidget button98
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget text97))
+    (dolist (n (list frame01 form01 text97 button99 button98 button97))(manage n))
     (if (G-widget "scan-disp2" :quiet)(GtDeleteWidget (G-widget "scan-disp2")))
     (setq scan-disp2 (GtMakeObject 'plotter :name "scan-disp2" :point 0.0 :length 0.1 
-      :display-parent form96  :scroll-parent form96 :ch-label-space 0 :no-controls t))
-    (put scan-disp2 :display-form form96)
+      :display-parent form01  :scroll-parent form01 :ch-label-space 0 :no-controls t))
+    (put scan-disp2 :display-form form01)
     (GtPopupEditor scan-disp2)
     (setq dispw (resource (G-widget "scan-disp2") :display-widget))
     (set-values dispw :resize 1
@@ -633,40 +668,63 @@
   )
 )
 
+(defun create-memo-buttons(form) 
+  (let ((button1)(button2)(button3)(button4)(button5)(rb))
+    (setq button1 (make-button form "button1" :labelString (XmString "goto")
+      :topAttachment  XmATTACH_FORM
+      :leftAttachment XmATTACH_FORM))
+    (setq button2 (make-button form "button2" :labelString (XmString "full view")
+      :topAttachment   XmATTACH_FORM
+      :leftAttachment  XmATTACH_WIDGET  :leftWidget button1))
+    (setq button3 (make-button form "button3" :labelString (XmString "note")
+      :topAttachment   XmATTACH_FORM
+      :leftAttachment  XmATTACH_WIDGET  :leftWidget button2))
+    (setq button4 (make-button form "button4" :labelString (XmString "FIT")
+      :topAttachment   XmATTACH_FORM
+      :leftAttachment  XmATTACH_WIDGET  :leftWidget button3))
+    (setq button5 (make-button form "button5" :labelString (XmString "note & FIT")
+      :topAttachment   XmATTACH_FORM
+      :leftAttachment  XmATTACH_WIDGET  :leftWidget button4))
+    (setq rb (XmCreateRadioBox form "rb" (X-arglist) 0))
+    (set-values rb :topAttachment XmATTACH_FORM :numColumns 2
+      :leftAttachment  XmATTACH_WIDGET  :leftWidget button5)
+    (setq nmenu1 (XmCreateToggleButtonGadget rb "menu1" (X-arglist) 0))
+    (setq nmenu2 (XmCreateToggleButtonGadget rb "menu2" (X-arglist) 0))
+    (set-values nmenu1 :set 1) 
+    (dolist (n (list button1 button2 button3 button4 button5 rb nmenu1 nmenu2))(manage n))
+    (add-lisp-callback button1 "activateCallback" '(goto))
+    (add-lisp-callback button2 "activateCallback" '(full-view))
+    (add-lisp-callback button3 "activateCallback" '(memo-note))
+    (add-lisp-callback button4 "activateCallback" '(fit-select))
+    (add-lisp-callback button5 "activateCallback" '(progn(memo-note)(fit-select)))
+    (return button1)
+  )
+)
+
 (defun create-memo-menu(bar)
   (let ((menus)(n))
-    (setq menu1 (make-menu bar "menu"))
+    (setq menu1 (make-menu bar "menu" nil
+      '("save as *-wave.txt" (memo-text-save))
+      '("load *-wave.txt"    (memo-text-load))
+      '("clear memo"         (XmTextSetString nmemo ""))))
     (setq menu2 (make-menu bar "waves"))
-    (make-menu menu2 "memo1 waves" nil :tear-off
-      '("discharge"    (memo-insert memo98 "discharge"))
-      '("spike"        (memo-insert memo98 "spike"))
-      '("polyspike"    (memo-insert memo98 "polyspike"))
-      '("burst"        (memo-insert memo98 "burst"))
-      '("ictal onset"  (memo-insert memo98 "ictal onset"))
-      '("EEG spike"    (memo-insert memo98 "EEG spike"))
-      '("physiological activities"  (memo-insert memo98 "phyisological activities"))
-      '("noise"        (memo-insert memo98 "noise"))
-      '("???"          (memo-insert memo98 "???")))
-    (make-menu menu2 "memo2 waves" nil :tear-off
-      '("discharge"    (memo-insert memo97 "discharge"))
-      '("spike"        (memo-insert memo97 "spike"))
-      '("polyspike"    (memo-insert memo97 "polyspike"))
-      '("burst"        (memo-insert memo97 "burst"))
-      '("ictal onset"  (memo-insert memo97 "ictal onset"))
-      '("EEG spike"    (memo-insert memo97 "EEG spike"))
-      '("physiological activities"  (memo-insert memo97 "phyisological activities"))
-      '("noise"        (memo-insert memo97 "noise"))
-      '("???"          (memo-insert memo97 "???")))
+    (make-menu menu2 "waves" nil :tear-off
+      '("discharge"    (memo-insert "discharge"))
+      '("spike"        (memo-insert "spike"))
+      '("polyspike"    (memo-insert "polyspike"))
+      '("burst"        (memo-insert "burst"))
+      '("ictal onset"  (memo-insert "ictal onset"))
+      '("EEG spike"    (memo-insert "EEG spike"))
+      '("physiological activities"  (memo-insert "phyisological activities"))
+      '("noise"        (memo-insert "noise"))
+      '("???"          (memo-insert "???")))
     (setq menu3 (make-menu bar "display"))
     (add-button menu3 "default-display" '(set-default-display))
-    (make-menu menu3 "memo1 sort" nil :tear-off
-      '("according to amplitude" (memo-sort memo98 "amplitude"))
-      '("according to time"      (memo-sort memo98 "time"))
-      '("according to sensor"    (memo-sort memo98 "sensor")))
-    (make-menu menu3 "memo2 sort" nil :tear-off
-      '("according to amplitude" (memo-sort memo97 "amplitude"))
-      '("according to time"      (memo-sort memo97 "time"))
-      '("according to sensor"    (memo-sort memo97 "sensor")))    
+    (add-button menu3 "change color" '(change-color))
+    (make-menu menu3 "sort" nil :tear-off
+      '("according to amplitude" (memo-sort "amplitude"))
+      '("according to time"      (memo-sort "time"))
+      '("according to sensor"    (memo-sort "sensor")))  
     (setq menu4 (make-menu bar "assorted"))
     
     (add-button menu4 "apply SSP" '(apply-ssp))
@@ -777,7 +835,6 @@
         (setq chdist (append chdist (list (mapcar #'sqrt dist))))))
     (defparameter ch_dist chdist)
     (defparameter near_coil (calc_near_coil))
-    (defparameter nsensors 30)
   )
 )
 
@@ -833,6 +890,8 @@
   (defparameter stepwise 0.5)
   (defparameter npeaks 10)
   (defparameter dipspan 0.2)
+  (defparameter nmenu 1)
+  ;; (defparameter defmemo memo98); this is defined after create-memo 
   (defvar wave-name 
       (list "discharge" "spike" "polyspike" "burst" "ictal onset" "EEG spike" "physiological activities" "noise" "???"))
 )
@@ -956,13 +1015,13 @@
   )
 )
 
-(defun goto(memo)
+(defun goto()
   (let ((n)(LL)(N)(pos)(L)(t0)(span)(span0)(t1))
-    (setq LL (get-list-memo memo))
+    (setq LL (get-list-memo nmemo))
     (setq N (second LL))
     (setq N (append N (list 999999999)))
     (setq LL (first LL))
-    (setq pos (XmTextGetInsertionPosition memo))
+    (setq pos (XmTextGetInsertionPosition nmemo))
     (if (> (length N) 1)(progn
       (setq n 0)
       (while (> pos (nth n N))(progn
@@ -1151,14 +1210,14 @@
   )
 )
 
-(defun memo-insert(memo str)
+(defun memo-insert(str)
   (let ((str0)(str1)(str2)(strm)(n)(N)(pos)(L)(m))
-    (setq str0 (XmTextGetString memo))
+    (setq str0 (XmTextGetString nmemo))
     (setq strm (make-string-input-stream str0))
     (setq N (get-string-return str0))
     (setq N (append N (list 99999999)))
     (setq n 0)
-    (setq pos (XmTextGetInsertionPosition memo))
+    (setq pos (XmTextGetInsertionPosition nmemo))
     (while (> pos (nth n N))(setq n (1+ n)))
     (dotimes (m (length N))
       (setq str2 (read-line strm))
@@ -1168,11 +1227,11 @@
         (if (> (length str2) 0)
         (setq str1 (format nil "~a~%~a" str1 str2))))))
     (setq str1 (string-left-trim "nil" str1))
-    (XmTextSetString memo str1)
+    (XmTextSetString nmemo str1)
   )
 )
 
-(defun memo-note(memo)
+(defun memo-note()
   (let ((w)(gra)(t0)(span)(mtx)(x)(chname)(amp)(tm)(str))
     (setq w (G-widget "disp001"))
     (setq gra (G-widget "gra"))
@@ -1186,15 +1245,15 @@
       (setq tm (1- (third x)))
       (setq tm  (+ (* tm (resource gra :x-scale)) t0))
       (setq str (format nil "~0,4f  ~0,4f  MEG~a  ~0,4f  ~0,1f" t0 span chname tm amp))
-      (memo-add memo str)));; ~% must be omitted!
+      (memo-add nmemo str)));; ~% must be omitted!
   )
 )
 
-(defun memo-sort(memo str)
+(defun memo-sort(str)
   (let ((LL)(N)(STR)(str0)(str1)(str2)(K nil)(Korder)(n))
-    (memo-delete-nil memo);;delete nil row
-    (setq str0 (XmTextGetString memo))
-    (setq LL (get-list-memo memo))
+    (memo-delete-nil nmemo);;delete nil row
+    (setq str0 (XmTextGetString nmemo))
+    (setq LL (get-list-memo nmemo))
     (setq N  (second LL))
     (setq N (append N (list 99999999)))
     (setq LL (first LL))
@@ -1215,7 +1274,7 @@
       (setq str2 (nth (nth n Korder) LL))
       (if (string-equal str1 "")(setq str1 str2)
         (setq str1 (format nil "~a~%~a" str1 str2))))
-    (XmTextSetString memo str1)
+    (XmTextSetString nmemo str1)
   )
 )
 
@@ -1234,6 +1293,40 @@
       (setq str (string-trim "MEG " str))
       (setq K (append K (list (read-from-string str)))))
     (return K)
+  )
+)
+
+(defun memo-text-load()
+  (let ((filename)(fid)(str)(x))
+    (setq filename (resource (G-widget "file"):filename))
+    (if (not filename)(format nil "No file is selected")
+      (progn
+        (setq filename (format nil "~a-wave.txt" (string-right-trim ".fif" filename) "-wave.txt"))
+        (if (file-exists-p filename)
+          (progn
+            (setq str "")
+            (setq fid (open filename :direction :input))
+            (dotimes (i 1000)
+              (setq x (read-line fid))
+              (if (> (length x) 0)
+                (if (string-equal str "")(setq str x)
+                (setq str (format nil "~a~%~a" str x)))))     
+            (close fid)
+            (XmTextSetString nmemo str)))))
+  )
+)
+
+(defun memo-text-save()
+  (let ((filename)(fid)(str))
+    (setq filename (resource (G-widget "file"):filename))
+    (if (> (length filename) 4)
+      (progn
+        (setq filename (format nil "~a-wave.txt" (string-right-trim ".fif" filename)))
+        (setq fid (open filename :direction :output :if-exists :supersede))
+        (princ (XmTextGetString nmemo) fid)
+        (close fid)
+        (setq str (format nil "~a has been saved." filename))
+        (info str)))
   )
 )
 
@@ -1259,7 +1352,7 @@
       (setq nch (1- (second x)))
       (setq amp (* (first x) 1e+13))
       (setq LL (append LL (list (list t0 x-scale nch t1 amp)))))
-    (memo-add-list memo98  LL)
+    (memo-add-list nmemo  LL)
   )
 )
 
@@ -1270,9 +1363,23 @@
 
 (defun run() 
   (let ((filename));;filename is tagert fiff file
-    (initialize)
     (open-diskfile filename)
     (set-default-display))
+)
+
+(defun scan-focus()
+  (let ((n)(w)(w1)(t0)(span)(t1)(disp))
+    (setq w (G-widget "scan-disp2"))
+    (setq span (resource (G-widget w) :length))
+    (if (< span 0.5)(progn
+      (setq t0 (resource (G-widget "win-peak2") :point))
+      (setq span2 (read-from-string (XmTextGetString text002))) 
+      (setq t1 (+ t0 (/ span 2)))
+      (setq t1 (- t1 (/ span2 2)))
+      (XmTextSetString text001 (format nil "~0,2f" t1))
+      (set-resource (G-widget "disp001") :selection-start t0 :selection-length span))))
+      (sync-selection-3 (G-widget "disp001"))
+  )
 )
 
 (defun scan-max()
@@ -1315,12 +1422,12 @@
     ;(setq delay (require-widget :delay "delay"))
     ;(set-resource delay :delay gap)
     ;(link src delay)  ;;to be improved in the future!
-    (setq str99 (XmTextGetString memo99))
-    (setq str97 (XmTextGetString memo97))
+    (setq str99 (XmTextGetString memo0))
+    (setq str97 (XmTextGetString memo2))
     (delete-memo)
     (create-memo)
-    (XmTextSetString memo99 str99)
-    (XmTextSetString memo97 str97)
+    (XmTextSetString memo0 str99)
+    (XmTextSetString memo2 str97)
     (link src scan-disp)
     (GtPopupEditor scan-disp)
     (dotimes (n nch)(set-property scan-disp n :name (nth n meg8)))
@@ -1433,8 +1540,15 @@
   )
 )
 
-(defun select-sensors(snsno);use ch_dist() near_coil() nsensors
-  (let ((n)(sns)(snss)(str "MEG[")(str1))
+(defun select-sensors(snsno);use ch_dist() near_coil() 
+  (let ((n)(sns)(snss)(str "MEG[")(str1)(nummber-of-sensors))
+    (setq str1 (XmTextGetString nsensor-text))
+    (setq n (read-from-string str1))
+    (if (not (numberp n))
+      (progn (info "number of sensors is set to be 30!")(setq n 30)))
+    (if (and (< n 4)(> n 102))
+      (progn (info "number of sensors is set to be 30!")(setq n 30)))
+    (setq number-of-sensors n)
     (setq snsno (format nil "~a" snsno));string
     (setq snsno (string-left-trim "MEG " snsno))
     (setq snsno (/ (read-from-string snsno) 10))
@@ -1442,7 +1556,7 @@
     (dotimes (n (length near_coil))
       (if (equal snsno (nth 0 (nth n near_coil)))
         (setq snss (nth n near_coil))))
-    (dotimes (n nsensors)
+    (dotimes (n number-of-sensors)
       (setq sns (nth n snss))
       (setq str1 (format nil "~a1 ~a2 ~a3" sns sns sns))
       (setq str (format nil "~a ~a" str str1)))
