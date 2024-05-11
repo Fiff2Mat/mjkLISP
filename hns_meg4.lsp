@@ -1,7 +1,7 @@
-;;   hns_meg  for epilepsy analysis
+https://github.com/Fiff2Mat/mjkLISP/blob/main/hns_meg4.lsp;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2024-April... by Akira Hashizume
-;;   Releaesd on 2024-May 6th
+;;   Releaesd on 2024-May 9th
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
 ;;  This hns_meg4.lsp is uploaded in GitHub 
@@ -213,6 +213,7 @@
     (add-lisp-callback lead-coronal "valueChangedCallback" '(change-leads "coronal"))
     (add-button *user-menu* "apply SSP" '(apply-ssp))
     (add-button *user-menu* "change color" '(change-color))
+    (add-button *user-menu* "show my-memo" '(manage form99))
     ;(add-button *user-menu* "calc average noise" '(calc-noise-level))
     (add-lisp-callback text001      "valueChangedCallback" '(change-p0span))
     (add-lisp-callback text002      "valueChangedCallback" '(change-p0span))
@@ -272,7 +273,7 @@
 )
 
 (defun calc-noise-level()
-  (let ((n)(t0)(tt)(span)(tspan 1)(mtx)(w)(smp)(S)(S0 0)(nch)(str0)(str1)(str2))
+  (let ((n)(t0)(tt)(span)(tspan 1)(mtx)(w)(smp)(S)(S0 0)(Sg)(Sm)(nch)(str0)(str1)(str2))
     (setq t0 (resource (G-widget "disp001") :selection-start))
     (setq span (resource (G-widget "disp001") :selection-length))
     (if (> span 0)(progn
@@ -280,8 +281,6 @@
       (setq str0 (format nil "since  ~0,2fs to ~0,2fs" t0 (+ t0 span)))
       ;;gradiometer
       (set-resource w :names '("MEG*") :ignore '("MEG*1"));;gradiometer
-      ;(setq t0 (resource (G-widget "disp001") :selection-start))
-      ;(setq span (resource (G-widget "disp001") :selection-length))
       (setq span (- span tspan)); by 1 sec
       (setq smp nil S nil S0 0)
       (while (> span tspan)
@@ -298,8 +297,8 @@
       (setq S   (append S   (list (matrix-element-sum mtx))))
       (setq S0 (/ (apply #'+ S)(apply #'+ smp)))
       (setq nch (resource (G-widget "meg-sel"):channels))
-      (setq S0 (/ S0 nch))
-      (setq str1 (format nil "gradiometer ~0,2f fT/cm" (* S0 1e+13)))
+      (setq S0 (* (/ S0 nch) 1e+13))
+      (setq Sg S0)
       ;;magnetometer
       (set-resource w :names '("MEG*1") :ignore nil);;magnetometer
       (setq t0 (resource (G-widget "disp001") :selection-start))
@@ -320,10 +319,12 @@
       (setq S   (append S   (list (matrix-element-sum mtx))))
       (setq S0 (/ (apply #'+ S)(apply #'+ smp)))
       (setq nch (resource (G-widget "meg-sel"):channels))
-      (setq S0 (/ S0 nch))
-      (setq str2 (format nil "magnetometer  ~0,2f fT" (* S0 1e+15)))
+      (setq S0 (* (/ S0 nch) 1e+15))
+      (setq Sm S0)
       ;;final
-      (memo-add memo0 (format nil "~a~%~a~%~a" str0 str1 str2))))
+      (memo-add memo0 (format nil "~a~%gradoimeter ~0,2f fT/cm~%magnetometer ~0,2f fT" str0 Sg Sm))
+      (xfit-command (format nil "noise constant ~0,1f ~0,1f ~%" Sg Sm))
+      (xfit-command "qscale 20")));;for large dipole of epileptic discharge
   )
 )
 
@@ -448,38 +449,23 @@
       (set-resource (G-widget (format nil "disp00~d" (1+ n))) :scales mtx))))
 )
 
-(defun create-memo-old()
-  (let ((n)(mid)(w)(label99)(nemubar99)(frame99)(frame99-label)(text99)(text98)(pane99)(memo96))
-    (if (G-widget "scan-disp" :quiet)(delete-memo))   
-    (setq mid 55)
-    (setq form99 (make-form-dialog *application-shell* "form99" :autoUnmanage 0))
-    (set-values form99 :resize 1)
-    (setq menubar99 (make-menu-bar form99 "menubar99" :autounmanage 0
-      :topAttachment   XmATTACH_FORM 
-      :leftAttachment  XmATTACH_POSITION :leftPosition mid
-      :rightAttachment XmATTACH_POSITION :rightPosition 100))
-    (create-memo-menu menubar99)
-    (manage menubar99)
-    (setq memo96 (make-scrolled-text form99 "memo96" 
-      :editMode XmMULTI_LINE_EDIT :rows 13 :columns 30));;the height of controls of plotter
-    (manage memo96);;this must be here!!
-    (setq pane99 (XmCreatePanedWindow form99 "pane99" (X-arglist) 0))
-    (set-values pane99 
-      :leftAttachment  XmATTACH_POSITION :leftPosition mid
-      :topAttachment   XmATTACH_WIDGET   :topWidget        menubar99
-      :rightAttachment XmATTACH_FORM     :bottomAttachment XmATTACH_FORM)
-    (setq frame99 (make-frame pane99 "frame99"))
-    (setq frame98 (make-frame pane99 "frame98"))
-    (setq frame97 (make-frame pane99 "frame97"))
-    (create-memo1 frame99)
-    (create-memo2 frame98)
-    (create-memo3 frame97)
-    (dolist (n (list form99 pane99 frame99 frame98 frame97))(manage n))
-    (setq pos (create-memo4 form99 pane99  memo96));;invisible structure
-    (create-memo5 form99 pane99);;scaned gra waves
-    (create-memo6 form99 memo96 pos pane99);top left right
-    (add-button *user-menu* "show my-memo" '(manage form99))
-  ) 
+(defun consecutive-fit()
+  (let ((n)(LLL)(LL)(L)(Ls)(N)(w)(ch)(tt))
+    (setq LLL (get-list-memo nmemo))    
+    (setq N (second LLL))
+    (setq L (first LLL))
+    (setq w (G-widget "meg-sel"))
+    (dotimes (n (length L))
+      (setq Ls (nth n L))
+      (setq ch (format nil "~a" (third Ls)))
+      (select-sensors ch)
+      (setq tt (* (fourth Ls) 1000));sec->msec
+      (xfit-transfer-data w (list (first Ls)(second Ls)))
+      (xfit-command (format nil "samplech ~a" (string-left-trim "MEG " ch)))
+      (xfit-command (format nil "fit ~a" tt))
+      ;(xfit-command "fullview on")
+    )
+  )
 )
 
 (defun create-memo()
@@ -521,7 +507,6 @@
     (add-lisp-callback nmenu1  "valueChangedCallback" '(setq nmemo memo1))
     (add-lisp-callback nmenu2  "valueChangedCallback" '(setq nmemo memo2))
     (setq nmemo memo1)
-    (add-button *user-menu* "show my-memo" '(manage form99))
   )
 )
 
@@ -533,40 +518,6 @@
     (setq memo (make-scrolled-text frame "memo" :editMode XmMULTI_LINE_EDIT
       :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM))
     (dolist (n (list form label  memo))(manage n))
-    (return memo)
-  )
-)
-
-(defun create-memo2old(frame);;memo98
-  (let ((n)(form)(button1)(button2)(button3)(button4)(button5)(frame1)(frame1-label)(memo))
-    (setq form (make-form frame "form"))
-    (setq button1 (make-button form "button1" :labelString (XmString "goto")
-      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_FORM))
-    (setq button2 (make-button form "button2" :labelString (XmString "full view")
-      :topAttachment   XmATTACH_FORM 
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button1))
-    (setq button3 (make-button form "button3" :labelString (XmString "note")
-      :topAttachment   XmATTACH_FORM
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button2))
-    (setq button4 (make-button form "button4" :labelString (XmString "FIT")
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button3))
-    (setq button5 (make-button form "button5" :labelString (XmString "note & FIT")
-      :leftAttachment  XmATTACH_WIDGET :leftWidget button4))
-    (setq frame1 (make-frame form "frame1" :resize 1
-      :topAttachment    XmATTACH_WIDGET :topWidget button1
-      :leftAttachment   XmATTACH_FORM   :rightAttachment XmATTACH_FORM
-      :bottomAttachment XmATTACH_FORM))
-    (setq frame1-label (make-label frame1 "frame1-label" :childType XmFRAME_TITLE_CHILD))
-    (set-values frame1-label 
-      :labelString (XmString "  sec        span        sns          peak         fT/cm"))
-    (setq memo (make-scrolled-text frame1 "memo" :editMode XmMULTI_LINE_EDIT
-      :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM))
-    (dolist (n (list form button1 button2 button3 button4 button5 frame1 frame1-label memo))(manage n))
-    (add-lisp-callback button1 "activateCallback" '(goto memo98))
-    (add-lisp-callback button2 "activateCallback" '(full-view))
-    (add-lisp-callback button3 "activateCallback" '(memo-note memo))
-    (add-lisp-callback button4 "activateCallback" '(fit-select))
-    (add-lisp-callback button5 "activateCallback" '(progn(memo-note memo)(fit-select)))
     (return memo)
   )
 )
@@ -688,8 +639,8 @@
     (setq rb (XmCreateRadioBox form "rb" (X-arglist) 0))
     (set-values rb :topAttachment XmATTACH_FORM :numColumns 2
       :leftAttachment  XmATTACH_WIDGET  :leftWidget button5)
-    (setq nmenu1 (XmCreateToggleButtonGadget rb "menu1" (X-arglist) 0))
-    (setq nmenu2 (XmCreateToggleButtonGadget rb "menu2" (X-arglist) 0))
+    (setq nmenu1 (XmCreateToggleButtonGadget rb "memo1" (X-arglist) 0))
+    (setq nmenu2 (XmCreateToggleButtonGadget rb "memo2" (X-arglist) 0))
     (set-values nmenu1 :set 1) 
     (dolist (n (list button1 button2 button3 button4 button5 rb nmenu1 nmenu2))(manage n))
     (add-lisp-callback button1 "activateCallback" '(goto))
@@ -705,8 +656,7 @@
   (let ((menus)(n))
     (setq menu1 (make-menu bar "menu" nil
       '("save as *-wave.txt" (memo-text-save))
-      '("load *-wave.txt"    (memo-text-load))
-      '("clear memo"         (XmTextSetString nmemo ""))))
+      '("load *-wave.txt"    (memo-text-load))))
     (setq menu2 (make-menu bar "waves"))
     (make-menu menu2 "waves" nil :tear-off
       '("discharge"    (memo-insert "discharge"))
@@ -720,7 +670,7 @@
       '("???"          (memo-insert "???")))
     (setq menu3 (make-menu bar "display"))
     (add-button menu3 "default-display" '(set-default-display))
-    (add-button menu3 "change color" '(change-color))
+    (add-button menu3 "delete non-sense lines" '(memo-delete-nil nmemo))
     (make-menu menu3 "sort" nil :tear-off
       '("according to amplitude" (memo-sort "amplitude"))
       '("according to time"      (memo-sort "time"))
@@ -729,6 +679,8 @@
     
     (add-button menu4 "apply SSP" '(apply-ssp))
     (add-button menu4 "calc average noise" '(calc-noise-level))
+    (add-button menu4 "center at peak" '(memo-center))
+    (add-button menu4 "conescutive fit" '(consecutive-fit))
   )
 )
 
@@ -997,7 +949,7 @@
   (let ((str)(strm)(n)(N)(L nil))
     (setq str (XmTextGetString memo))
     (setq strm (make-string-input-stream str))
-    (setq N (get-string-return str))
+    (setq N (get-string-return str));;somethimes this does not work properly??
     (setq N (append N (list 999999)))
     (dotimes (n (length N))
       (setq L (append L (list (read-line strm)))))
@@ -1016,25 +968,31 @@
 )
 
 (defun goto()
-  (let ((n)(LL)(N)(pos)(L)(t0)(span)(span0)(t1))
+  (let ((n)(LL)(N)(pos)(L)(t0)(span)(span0)(amp)(t1)(w))
     (setq LL (get-list-memo nmemo))
     (setq N (second LL))
     (setq N (append N (list 999999999)))
     (setq LL (first LL))
     (setq pos (XmTextGetInsertionPosition nmemo))
-    (if (> (length N) 1)(progn
+    (if (< (length N) 2)(info "invalid data!")(progn
       (setq n 0)
       (while (> pos (nth n N))(progn
         (setq n (1+ n))))
       (setq L (nth n LL))
       (if (> (length L) 4)(progn
-        (setq t0 (first L) span (second L))
+        (setq t0 (first L) span (second L) amp (fifth L))
         (setq span0 (resource (G-widget "disp001") :length))
         (setq t1 (- (+ t0 (/ span 2))(/ span0 2))) 
         (XmTextSetString text001 (format nil "~0,2f" t1))
         (dotimes (n 9)
           (set-resource (G-widget (format nil "disp00~d" (1+ n))) 
-            :selection-start t0 :selection-length span))))))
+            :selection-start t0 :selection-length span))
+        (setq d1 (G-widget "disp001") wp (G-widget "win-peak") dp (G-widget "disp-peak"))
+        (set-resource (G-widget "win-peak")  :point t0 :start 0 :end span)
+        (set-resource (G-widget "disp-peak") :point 0 :length span)
+        (set-resource (G-widget "disp-peak") 
+          :scales (make-matrix (resource (G-widget "disp-peak"):channels) 1 (* amp 1e-13)))
+        ))))
   )
 )
 
@@ -1058,7 +1016,7 @@
       :rightAttachment  XmATTACH_POSITION :rightPosition   80)
     (manage form001);;This must be here!
     (define-parameters)
-    (setq default-data-source "meg-sel")
+    ;(setq default-data-source "meg-sel");; NOT USE
     (defchpos)
     (create-widgets)
     (add-parameter xx 80)
@@ -1187,6 +1145,40 @@
   )
 )
 
+(defun memo-center()
+  (let ((n)(L)(N)(Ls)(mtx)(t0)(span)(amp)(t1)(spansmp)(w)(x)(str0)(ch)(str)(t2)(x-scale)(timegap 0.002)(nLs)(nn))
+    (memo-delete-nil nmemo);
+    (setq L (get-list-memo nmemo));;0:list of memo, 1:position of return 
+    (setq N (nth 1 L))
+    (setq L (nth 0 L))
+    (setq w (G-widget "gra"))
+    (setq x-scale (resource w :x-scale))
+    (setq str0 "")
+    (dotimes (n (length L))
+      (setq Ls (nth n L))
+      (setq t0 (nth 3 Ls) span (nth 1 Ls) amp (nth 4 Ls))
+      (setq spansmp (x-to-sample w span))
+      (setq t1 (- t0 (/ span 2)))
+      (setq mtx (get-data-matrix w (round (x-to-sample w t1)) spansmp)) 
+      (setq x (max-matrix mtx))
+      (setq t2 (third x));max time in smp
+      (setq t2 (+ t1 (* (1- t2) x-scale)))
+      (if (< (abs (- t0 t2)) timegap)(progn
+        (setq ch (get-property w (1- (second x)) :name))
+        (setq x (* (first x) 1e+13))
+        (setq str (format nil "~0,4f  ~0,4f  ~a  ~0,4f  ~0,1f" t1 span ch t0 x))
+        (setq nLs (length Ls))
+        (if (> nLs 5)(progn
+          (setq nn 5)
+          (while (< nn nLs)
+            (setq str (format nil "~a ~a" str (nth nn Ls)))
+            (inc nn))))
+        (if (string-equal str0 "")(setq str0 str)(setq str0 (format nil "~a~%~a" str0 str)))))) 
+    (XmTextSetString nmemo str0)
+    (info "peak at center")
+  )
+)
+
 (defun memo-delete-nil(memo)
   (let ((n)(str)(str0)(strm)(L)(LL)(LS nil)(N))
     (setq str0 (XmTextGetString memo))
@@ -1275,6 +1267,7 @@
       (if (string-equal str1 "")(setq str1 str2)
         (setq str1 (format nil "~a~%~a" str1 str2))))
     (XmTextSetString nmemo str1)
+    (info "sorted!")
   )
 )
 
@@ -1363,22 +1356,13 @@
 
 (defun run() 
   (let ((filename));;filename is tagert fiff file
+    (initialize)
     (open-diskfile filename)
     (set-default-display))
 )
 
 (defun scan-focus()
-  (let ((n)(w)(w1)(t0)(span)(t1)(disp))
-    (setq w (G-widget "scan-disp2"))
-    (setq span (resource (G-widget w) :length))
-    (if (< span 0.5)(progn
-      (setq t0 (resource (G-widget "win-peak2") :point))
-      (setq span2 (read-from-string (XmTextGetString text002))) 
-      (setq t1 (+ t0 (/ span 2)))
-      (setq t1 (- t1 (/ span2 2)))
-      (XmTextSetString text001 (format nil "~0,2f" t1))
-      (set-resource (G-widget "disp001") :selection-start t0 :selection-length span))))
-      (sync-selection-3 (G-widget "disp001"))
+  (let ((n))
   )
 )
 
