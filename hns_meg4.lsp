@@ -1,7 +1,7 @@
-https://github.com/Fiff2Mat/mjkLISP/blob/main/hns_meg4.lsp;;   hns_meg  for epilepsy analysis
+;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2024-April... by Akira Hashizume
-;;   Releaesd on 2024-May 9th
+;;   Releaesd on 2024-May 12th
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
 ;;  This hns_meg4.lsp is uploaded in GitHub 
@@ -211,8 +211,8 @@ https://github.com/Fiff2Mat/mjkLISP/blob/main/hns_meg4.lsp;;   hns_meg  for epil
     (add-lisp-callback lead-mono    "valueChangedCallback" '(change-leads "mono"))
     (add-lisp-callback lead-banana  "valueChangedCallback" '(change-leads "banana"))
     (add-lisp-callback lead-coronal "valueChangedCallback" '(change-leads "coronal"))
-    (add-button *user-menu* "apply SSP" '(apply-ssp))
-    (add-button *user-menu* "change color" '(change-color))
+    ;(add-button *user-menu* "apply SSP" '(apply-ssp))
+    ;(add-button *user-menu* "change color" '(change-color))
     (add-button *user-menu* "show my-memo" '(manage form99))
     ;(add-button *user-menu* "calc average noise" '(calc-noise-level))
     (add-lisp-callback text001      "valueChangedCallback" '(change-p0span))
@@ -257,6 +257,60 @@ https://github.com/Fiff2Mat/mjkLISP/blob/main/hns_meg4.lsp;;   hns_meg  for epil
   )
 )
 
+(defun calc-max-gra-matrix(t0 span)
+  (let ((n)(gra (G-widget "gra"))(tt 1000)(t1)(t2)(amp)(Amp)(Ch)(Tm)(check)(x)(y))
+    (setq t0 (x-to-sample gra t0))
+    (setq span (x-to-sample gra span))
+    (setq Amp nil)
+    (setq t1 0 t2 (+ t1 tt))
+    (while (< t2 span)
+      (setq mtx (get-data-matrix gra (+ t0 t1) tt))
+      (setq x (matrix-extent mtx))
+      (setq amp (apply #'max (mapcar #'abs x)))
+      (setq check nil)
+      (if (not Amp)(progn (setq Amp amp)(setq check t)))
+      (if (> amp Amp)(progn (setq Amp amp)(setq check t))) 
+      (if check (progn
+        (setq mtx (map-matrix mtx #'/ amp))
+        (setq mtx (map-matrix mtx #'abs))
+        (setq mtx (map-matrix mtx #'floor))
+        (setq y (array-dimension mtx 0));chanel
+        (setq y (transpose (ruler-vector 1 y y)))
+        (setq y (* y mtx))
+        (setq Ch (second (matrix-extent y)));channel
+        (setq x (array-dimension mtx 1));time
+        (setq x (ruler-vector 1 x x))
+        (setq x (* mtx x))
+        (setq Tm (second (matrix-extent x)))
+        (setq Tm (+ (1- Tm) t1))))
+      ;(print (list Amp (+ Tm t0)))
+      (setq t1 t2 t2 (+ t2 tt)))
+    (setq tt (- span t1))
+    (setq mtx (get-data-matrix gra (+ t0 t1) tt))
+    (setq x (matrix-extent mtx))
+    (setq amp (apply #'max (mapcar #'abs x)))
+    (setq check nil)
+    (if (not Amp)(progn (setq Amp amp)(setq check t)))
+    (if (> amp Amp)(progn (setq Amp amp)(setq check t))) 
+    (if check (progn
+      (print Amp)
+      (setq mtx (map-matrix mtx #'/ amp))
+      (setq mtx (map-matrix mtx #'abs))
+      (setq mtx (map-matrix mtx #'floor))
+      (setq y (array-dimension mtx 0));chanel
+      (setq y (transpose (ruler-vector 1 y y)))
+      (setq y (* y mtx))
+      (setq Ch (second (matrix-extent y)));channel
+      (setq x (array-dimension mtx 1));time
+      (setq x (ruler-vector 1 x x))
+      (setq x (* mtx x))
+      (setq Tm (second (matrix-extent x)))
+      (setq Tm (+ (1- Tm) t1))))
+    (setq Ch (get-property gra (1- (round Ch)):name))
+    (setq Tm (* (+ Tm t0)(resource gra :x-scale)))    
+    (return (list (* Amp 1e+13) Ch Tm)) 
+  )
+)
 
 (defun calc_near_coil()
   (let ((R nil)(dist)(x)(xx)(chname))
@@ -1324,6 +1378,39 @@ https://github.com/Fiff2Mat/mjkLISP/blob/main/hns_meg4.lsp;;   hns_meg  for epil
 )
 
 (defun number-of-peaks()
+  (let ((n)(mtx)(nsmp)(nch)(x-scale)(L nil)(k1)(k2)(gap)(x-scale)(t0)(gra)(x)(LL nil)(t1)(nch)(amp)(n1)(x-scale2))
+    (setq mtx (resource (G-widget "scan-source") :matrix))
+    (setq x-scale (resource (G-widget "scan-source") :x-scale))
+    (setq nsmp (array-dimension mtx 1))
+    (setq nch  (array-dimension mtx 0))
+    (dotimes (n nsmp)
+      (setq L (append L (list (second (matrix-extent (column n mtx)))))));; max amp/stepwise
+    (setq k1 (reverse (sort L)))
+    (setq k2 (reverse (sort-order L)))
+    (setq gap (calc-gap))
+    (setq gra (G-widget "gra") n 0 n1 0)
+    (setq x-scale2 (resource (G-widget "buf") :x-scale))
+    (while (< n1 npeaks)
+      (setq t0 (+ (* (nth n k2) x-scale) gap))
+      (setq mtx (get-gra-matrix t0 x-scale)); consecutive stepwise 
+      (setq x (max-matrix mtx))
+      (setq t1 (* (1- (third x)) x-scale2))
+      (setq t1 (+ t0 t1))
+      (setq t1 (- t1 (/ x-scale 2)))
+      (setq mtx (get-gra-matrix t1 x-scale)); peak at center
+      (setq x (max-matrix mtx))
+      (setq nch (1- (second x)))
+      (setq amp (* (first x) 1e+13))
+      (if (< (abs (- (nth n k1) amp)) 0.01)(progn
+        (setq t0 (+ t1 (* (1- (third x)) x-scale2)))
+        (setq LL (append LL (list (list t1 x-scale nch t0 amp))))
+        (inc n1)))
+      (inc n))
+    (memo-add-list nmemo  LL)
+  )
+)
+
+(defun number-of-peaks-old()
   (let ((n)(mtx)(nsmp)(nch)(x-scale)(L nil)(k1)(k2)(gap)(x-scale)(t0)(gra)(x)(LL nil)(t1)(nch)(amp))
     (setq mtx (resource (G-widget "scan-source") :matrix))
     (setq x-scale (resource (G-widget "scan-source") :x-scale))
@@ -1348,15 +1435,13 @@ https://github.com/Fiff2Mat/mjkLISP/blob/main/hns_meg4.lsp;;   hns_meg  for epil
     (memo-add-list nmemo  LL)
   )
 )
-
-
 (defun rgb-color(r g b)
   (+ (* (+ (* r 256) g) 256) b)
 )
 
 (defun run() 
   (let ((filename));;filename is tagert fiff file
-    (initialize)
+      (initialize)
     (open-diskfile filename)
     (set-default-display))
 )
