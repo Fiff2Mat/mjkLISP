@@ -1,7 +1,7 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2024-April... by Akira Hashizume
-;;   Releaesd on 2024-May 12th
+;;   Releaesd on 2024-May 13th
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
 ;;  This hns_meg4.lsp is uploaded in GitHub 
@@ -258,17 +258,15 @@
 )
 
 (defun calc-max-gra-matrix(t0 span)
-  (let ((n)(gra (G-widget "gra"))(tt 1000)(t1)(t2)(amp)(Amp)(Ch)(Tm)(check)(x)(y))
+  (let ((n)(gra (G-widget "gra"))(tt 1000)(t1)(t2)(amp)(Amp 0)(Ch)(Tm)(check)(x)(y))
     (setq t0 (x-to-sample gra t0))
     (setq span (x-to-sample gra span))
-    (setq Amp nil)
     (setq t1 0 t2 (+ t1 tt))
     (while (< t2 span)
       (setq mtx (get-data-matrix gra (+ t0 t1) tt))
       (setq x (matrix-extent mtx))
       (setq amp (apply #'max (mapcar #'abs x)))
       (setq check nil)
-      (if (not Amp)(progn (setq Amp amp)(setq check t)))
       (if (> amp Amp)(progn (setq Amp amp)(setq check t))) 
       (if check (progn
         (setq mtx (map-matrix mtx #'/ amp))
@@ -290,7 +288,6 @@
     (setq x (matrix-extent mtx))
     (setq amp (apply #'max (mapcar #'abs x)))
     (setq check nil)
-    (if (not Amp)(progn (setq Amp amp)(setq check t)))
     (if (> amp Amp)(progn (setq Amp amp)(setq check t))) 
     (if check (progn
       (print Amp)
@@ -309,6 +306,27 @@
     (setq Ch (get-property gra (1- (round Ch)):name))
     (setq Tm (* (+ Tm t0)(resource gra :x-scale)))    
     (return (list (* Amp 1e+13) Ch Tm)) 
+  )
+)
+
+(defun calc-max-gra-matrix-simple(t0 span)
+  (let ((n)(gra (G-widget "gra"))(tt 1000)(t1)(t2)(amp)(Amp)(Ch)(Tm)(check)(x)(y))
+    (setq t0 (x-to-sample gra t0))
+    (setq span (x-to-sample gra span))
+    (setq Amp 0)
+    (setq t1 0 t2 (+ t1 tt))
+    (while (< t2 span)
+      (setq mtx (get-data-matrix gra (+ t0 t1) tt))
+      (setq x (matrix-extent mtx))
+      (setq amp (apply #'max (mapcar #'abs x)))
+      (if (> amp Amp)(setq Amp amp)) 
+      (setq t1 t2 t2 (+ t2 tt)))
+    (setq tt (- span t1))
+    (setq mtx (get-data-matrix gra (+ t0 t1) tt))
+    (setq x (matrix-extent mtx))
+    (setq amp (apply #'max (mapcar #'abs x)))
+    (if (> amp Amp)(setq Amp amp)) 
+    (return Amp)
   )
 )
 
@@ -1441,7 +1459,7 @@
 
 (defun run() 
   (let ((filename));;filename is tagert fiff file
-      (initialize)
+    (initialize)
     (open-diskfile filename)
     (set-default-display))
 )
@@ -1514,7 +1532,7 @@
   (let ((n)(w1)(w2)(nch))
     (setq w1 (G-widget "scan-disp") w2 (G-widget "disp001"))
     (setq nch (resource w1 :channels))
-    (set-resource w1 :select-hook '(scan-select-hook))
+    (set-resource w1 :select-hook '(scan-select-hook2))
     (set-resource w1 :ch-label-space 40 :offsets (make-matrix nch 1 0.9))
     (dotimes (n 2) 
       (set-resource w1 :default-color  (resource w2 :default-color))
@@ -1566,7 +1584,45 @@
           (set-resource w2 :point 0 :length span2)))))
   )
 )
-      
+
+(defun scan-select-hook2()
+  (let ((w)(w0)(w1)(w2)(t0)(tspan)(t1)(t2)(span)(x)(amp)(t3)(span2)(disp))
+    (setq w  (G-widget "scan-disp"))
+    (setq buf (G-widget "buf"))
+    (setq w2 (G-widget "scan-disp2"))
+    (setq span (read-from-string (XmTextGetString text002)))
+    (setq span2 (read-from-string (XmTextGetString text97)))
+    (setq t0    (resource w :selection-start))
+    (setq t1 (+ t0 (calc-gap)))
+    (setq tspan (resource w :selection-length))
+    ;(print (list span span2 tspan))
+    (if (<= tspan 0.0)
+      (progn 
+        (GtUnlinkWidget w2)
+        (setq t2 (- t1 (/ span 2)))
+        (XmTextSetString text001 (format nil "~0,2f" t2))
+        (dotimes (x 9)
+          (setq disp (G-widget (format nil "disp00~d" (1+ x))))
+          (set-resource disp :selection-start -1 :selection-length -1)))
+      (progn
+        (setq t1 (+ t1 (/ tspan 2)))
+        (setq t2 (- t1 (/ span 2)))
+        (XmTextSetString text001 (format nil "~0,2f" t2))
+        (if (< tspan span)(progn
+          (setq t3 (- t1 (/ tspan 2))) 
+          (dotimes (x 9)
+            (setq disp (G-widget (format nil "disp00~d" (1+ x))))
+            (set-resource disp :selection-start t3 :selection-length tspan))))
+        (setq x (calc-max-gra-matrix t1 tspan))
+        (setq amp (first x) t3 (third x))
+        (setq amp (* amp 1e-13) t3 (- t3 (/ span2 2)))
+        (set-resource (G-widget "win-peak2") :point t3 :end span2)
+        (link (G-widget "win-peak2") w2)
+        (set-resource w2 :point 0 :length span2 
+          :scales (make-matrix (resource w2 :channels) 1 amp))))
+  )
+)      
+
 (defun scan-select-hook_old()
   (let ((w)(w1)(t0)(tspan)(t1)(t2)(span)(gap)(mtx)(x)(nch))
     (setq w  (G-widget "scan-disp"))
