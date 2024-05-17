@@ -1,7 +1,7 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2024-April... by Akira Hashizume
-;;   Releaesd on 2024-May 13th
+;;   Releaesd on 2024-May 16th
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
 ;;  This hns_meg4.lsp is uploaded in GitHub 
@@ -1465,7 +1465,19 @@
 )
 
 (defun scan-focus()
-  (let ((n))
+  (let ((n)(w (G-widget "scan-disp2"))(w0)(t0)(span0)(span00)(t1)(t2)(t3))
+    (setq w0 (widget-source w))
+    (if w0 (progn
+      (setq t0 (resource w0 :point) span0 (resource w0 :end))
+      (setq t1 (+ t0 (/ span0 2))) 
+      (setq span00 (read-from-string (XmTextGetString text002)))
+      (setq t2 (- t1 (/ span00 2)))
+      (XmTextSetString text001 (format nil "~0,2f" t2))
+      (dotimes (n 9)(set-resource (G-widget (format nil "disp00~d" (1+ n)))
+        :selection-start t0 :selection-length span0))
+      (set-resource (G-widget "win-peak") :point t0 :end span0)
+      (set-resource (G-widget "disp-peak") :point 0 :length span0)
+      (set-resource (G-widget "disp-peak") :scales (resource w :scales))))
   )
 )
 
@@ -1505,10 +1517,6 @@
     (setq src (require-widget :matrix-source "scan-source"))
     (setq MTX (matrix MTX))
     (set-resource src :matrix MTX :x-scale stepwise :x-unit "s")
-    ;(setq gap (* (resource (G-widget "buf") :low-bound)(resource (G-widget "buf") :x-scale)))
-    ;(setq delay (require-widget :delay "delay"))
-    ;(set-resource delay :delay gap)
-    ;(link src delay)  ;;to be improved in the future!
     (setq str99 (XmTextGetString memo0))
     (setq str97 (XmTextGetString memo2))
     (delete-memo)
@@ -1525,6 +1533,23 @@
     (setq tt (apply #'max (mapcar #'abs (matrix-extent MTX))))
     (set-resource scan-disp :scales (make-matrix nch 1 (/ tt 1.8)))
     (scan-max-dispcolor)
+  )
+)
+
+(defun scan-max-delay()
+  (let ((n)(buf)(sc)(lb)(xs)(t0)(mtx)(nch)(smp)(dl))
+    (setq buf (G-widget "buf") sc (G-widget "scan-source"))
+    (setq lb (resource buf :low-bound) xs (resource buf :x-scale))
+    (setq t0 (* lb xs))
+    (setq mtx (resource sc :matrix))
+    (setq nch (array-dimension mtx 0))
+    (setq smp (round (/ (* lb xs)(resource sc :x-scale))))
+    (setq mtx (mat-append mtx (make-matrix nch smp 0)))
+    (set-resource sc :matrix mtx)
+    (setq dl (require-widget :delay "delay"))
+    (set-resource dl :delay t0)
+    (link sc dl)
+    (link dl (G-widget "scan-disp"))
   )
 )
 
@@ -1612,14 +1637,17 @@
           (setq t3 (- t1 (/ tspan 2))) 
           (dotimes (x 9)
             (setq disp (G-widget (format nil "disp00~d" (1+ x))))
-            (set-resource disp :selection-start t3 :selection-length tspan))))
+            (set-resource disp :selection-start t3 :selection-length tspan))
+            (set-resource (G-widget "win-peak") :point t3 :end tspan)
+            (set-resource (G-widget "disp-peak") :point 0 :length tspan)))
         (setq x (calc-max-gra-matrix t1 tspan))
         (setq amp (first x) t3 (third x))
         (setq amp (* amp 1e-13) t3 (- t3 (/ span2 2)))
         (set-resource (G-widget "win-peak2") :point t3 :end span2)
         (link (G-widget "win-peak2") w2)
         (set-resource w2 :point 0 :length span2 
-          :scales (make-matrix (resource w2 :channels) 1 amp))))
+          :scales (make-matrix (resource w2 :channels) 1 amp))
+        (set-resource (G-widget "disp-peak") :scales (resource w2 :scales))))
   )
 )      
 
@@ -1651,14 +1679,16 @@
 )
 
 (defun scan-zoom(n)
-  (let ((t1)(t2)(w)(w1))
+  (let ((t1)(t2)(w)(w1)(dl nil)(tt 0))
     (setq w (G-widget "scan-disp"))
+    (if (G-widget "delay" :quiet)(progn
+      (setq dl (G-widget "delay") tt (resource dl :delay))))
     (if (equal n 0) 
       (progn
         (setq w1 (G-widget "scan-source"))
         (setq t1 0 t2 (array-dimension (resource w1 :matrix) 1))
         (setq t2 (* t2 (resource w1 :x-scale)))
-        (set-resource w :point t1 :length t2 :selection-start -1 :selection-length -1))
+        (set-resource w :point t1 :length (- t2 tt) :selection-start -1 :selection-length -1))
       (progn 
         (setq t1 (resource w :selection-start) t2 (resource w :selection-length))
         (if (> t2 0)(set-resource w :point t1 :length t2 :selection-start -1 :selection-length -1))))
