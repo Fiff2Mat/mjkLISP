@@ -1,7 +1,7 @@
 ;;   hns_meg  for epilepsy analysis
 ;;   
 ;;   Coding since 2024-April... by Akira Hashizume
-;;   Releaesd on 2024-May 16th
+;;   Releaesd on 2024 June 3rd
 ;;
 ;;  /opt/neuromag/setup/cliplab/Deflayouts.xxx should be devised for comfortable use.
 ;;  This hns_meg4.lsp is uploaded in GitHub 
@@ -14,7 +14,7 @@
 ;(xplotter)
 
 (defun add-parameter(top left)
-  (let ((n)(frame001)(frame002)(frame001-label)(frame002-label)(radiobox002)(label101)(frame003)(frame003-label)(dispw)(disp)(form002)(form003))
+  (let ((n)(frame001)(frame002)(frame001-label)(frame002-label)(frame003)(frame003-label)(form002)(form003)(form004))
     (setq pane001 (XmCreatePanedWindow form001 "pane001" (X-arglist) 0))
     (set-values pane001 :separatorOn 0 :sasIndent -1
      :topAttachment    XmATTACH_POSITION :topPosition top
@@ -48,13 +48,13 @@
       :topAttachment   XmATTACH_POSITION :topPosition    0
       :rightAttachment XmATTACH_POSITION :rightPosition 50))
     (setq label001 (make-label form002 "label001" :labelString (XmString "Start")
-      :topAttachment   XmATTACH_POSITION :topPosition    0
+      :topAttachment   XmATTACH_FORM     :topOffset 5
       :rightAttachment XmATTACH_WIDGET   :rightWidget text001))
     (setq text002 (make-text form002 "text002" :columns 6
       :topAttachment   XmATTACH_POSITION :topPosition    0
       :rightAttachment XmATTACH_POSITION :rightPosition 100))
     (setq label002 (make-label form002 "label002" :labelString (XmString "length")
-      :topAttachment   XmATTACH_POSITION :topPosition    0
+      :topAttachment   XmATTACH_FORM     :topOffset 5
       :rightAttachment XmATTACH_WIDGET   :rightWidget text002))
     (setq radiobox001 (XmCreateRadioBox form002 "radiobox001" (X-arglist) 0))
     (set-values radiobox001 :topAttachment  XmATTACH_WIDGET 
@@ -127,7 +127,7 @@
       :topAttachment XmATTACH_FORM  :rightAttachment XmATTACH_FORM))
     (setq radiobox101 (XmCreateRadioBox form003 "radiobox101" (X-arglist) 0))
     (set-values radiobox101 :leftAttachment XmATTACH_FORM :numColumns 3
-      :topAttachment XmATTACH_WIDGET :topWidget button101)
+      :topAttachment XmATTACH_WIDGET :topWidget button101) :topOffest 5
     (setq stepwise1 (XmCreateToggleButtonGadget radiobox101 "0.5" (X-arglist) 0))
     (setq stepwise2 (XmCreateToggleButtonGadget radiobox101 "1.0" (X-arglist) 0))
     (setq stepwise3 (XmCreateToggleButtonGadget radiobox101 "2.0" (X-arglist) 0))
@@ -199,24 +199,25 @@
 
 (defun assign-callback()
   (let ((n)(nn)(ndisp))
-    (add-lisp-callback text003      "valueChangedCallback" '(change-scale-meg "gra"))
-    (add-lisp-callback text004      "valueChangedCallback" '(change-scale-meg "mag"))
-    (add-lisp-callback text005      "activateCallback" '(change-bandpass "meg"))
-    (add-lisp-callback text006      "valueChangedCallback" '(change-scale-eeg))
-    (add-lisp-callback text007      "valueChangedCallback" '(change-scale-eeg))
-    (add-lisp-callback text008      "valueChangedCallback" '(change-scale-eeg)) 
-    (add-lisp-callback text009      "activateCallback" '(change-bandpass "eeg"))
-    (add-lisp-callback gra204       "valueChangedCallback" '(change-coil "gra"))
-    (add-lisp-callback mag102       "valueChangedCallback" '(change-coil "mag"))
-    (add-lisp-callback lead-mono    "valueChangedCallback" '(change-leads "mono"))
-    (add-lisp-callback lead-banana  "valueChangedCallback" '(change-leads "banana"))
-    (add-lisp-callback lead-coronal "valueChangedCallback" '(change-leads "coronal"))
-    ;(add-button *user-menu* "apply SSP" '(apply-ssp))
-    ;(add-button *user-menu* "change color" '(change-color))
+    (set-lisp-callback text003      "valueChangedCallback" '(change-scale-meg "gra"))
+    (set-lisp-callback text004      "valueChangedCallback" '(change-scale-meg "mag"))
+    (set-lisp-callback text005      "activateCallback" '(change-bandpass "meg"))
+    (set-lisp-callback text006      "valueChangedCallback" '(change-scale-eeg))
+    (set-lisp-callback text007      "valueChangedCallback" '(change-scale-eeg))
+    (set-lisp-callback text008      "valueChangedCallback" '(change-scale-eeg)) 
+    (set-lisp-callback text009      "activateCallback" '(change-bandpass "eeg"))
+    (set-lisp-callback gra204       "valueChangedCallback" '(change-coil "gra"))
+    (set-lisp-callback mag102       "valueChangedCallback" '(change-coil "mag"))
+    (set-lisp-callback lead-mono    "valueChangedCallback" '(change-leads "mono"))
+    (set-lisp-callback lead-banana  "valueChangedCallback" '(change-leads "banana"))
+    (set-lisp-callback lead-coronal "valueChangedCallback" '(change-leads "coronal"))
     (add-button *user-menu* "show my-memo" '(manage form99))
     ;(add-button *user-menu* "calc average noise" '(calc-noise-level))
-    (add-lisp-callback text001      "valueChangedCallback" '(change-p0span))
-    (add-lisp-callback text002      "valueChangedCallback" '(change-p0span))
+    (set-lisp-callback text001      "valueChangedCallback" '(change-p0span))
+    ;(set-lisp-callback text001      "losingFocusCallback" '(change-p0span))
+    ;(set-lisp-callback text001      "focusCallback" '(change-p0span));valueChanged=focus in Callback?
+    ;(set-lisp-callback text001      "losePrimaryCallback" '(change-p0span))
+    (set-lisp-callback text002      "valueChangedCallback" '(change-p0span))
     (set-resource (G-widget "disp001") :move-hook '(sync-view-3 "disp001") :select-hook '(sync-selection-3 "disp001"))
     (set-resource (G-widget "disp002") :move-hook '(sync-view-3 "disp002") :select-hook '(sync-selection-3 "disp002"))
     (set-resource (G-widget "disp003") :move-hook '(sync-view-3 "disp003") :select-hook '(sync-selection-3 "disp003"))
@@ -226,33 +227,34 @@
     (set-resource (G-widget "disp007") :move-hook '(sync-view-3 "disp006") :select-hook '(sync-selection-3 "disp007"))
     (set-resource (G-widget "disp008") :move-hook '(sync-view-3 "disp008") :select-hook '(sync-selection-3 "disp008"))
     (set-resource (G-widget "disp009") :move-hook '(sync-view-3 "disp009") :select-hook '(sync-selection-3 "disp009"))
-    (add-lisp-callback stepwise1    "valueChangedCallback" '(setq stepwise 0.5))
-    (add-lisp-callback stepwise2    "valueChangedCallback" '(setq stepwise 1.0))
-    (add-lisp-callback stepwise3    "valueChangedCallback" '(setq stepwise 2.0))
-    (add-lisp-callback button101    "activateCallback" '(scan-max))
-    (add-lisp-callback button102    "activateCallback" '(number-of-peaks))
-    (add-lisp-callback npeak1    "valueChangedCallback" '(setq npeaks  10))
-    (add-lisp-callback npeak2    "valueChangedCallback" '(setq npeaks  20))
-    (add-lisp-callback npeak3    "valueChangedCallback" '(setq npeaks  50))
-    (add-lisp-callback npeak4    "valueChangedCallback" '(setq npeaks 100))
-    (add-lisp-callback button201    "activateCallback" '(memo-note))  
-    (add-lisp-callback button202 "activateCallback" '(fit-select))
-    (add-lisp-callback button203 "activateCallback" '(progn(memo-note memo)(fit-select)))  
+    (set-lisp-callback stepwise1    "valueChangedCallback" '(setq stepwise 0.5))
+    (set-lisp-callback stepwise2    "valueChangedCallback" '(setq stepwise 1.0))
+    (set-lisp-callback stepwise3    "valueChangedCallback" '(setq stepwise 2.0))
+    (set-lisp-callback button101    "activateCallback" '(scan-max))
+    (set-lisp-callback button102    "activateCallback" '(number-of-peaks))
+    (set-lisp-callback npeak1    "valueChangedCallback" '(setq npeaks  10))
+    (set-lisp-callback npeak2    "valueChangedCallback" '(setq npeaks  20))
+    (set-lisp-callback npeak3    "valueChangedCallback" '(setq npeaks  50))
+    (set-lisp-callback npeak4    "valueChangedCallback" '(setq npeaks 100))
+    (set-lisp-callback button201    "activateCallback" '(memo-note))  
+    (set-lisp-callback button202 "activateCallback" '(fit-select))
+    (set-lisp-callback button203 "activateCallback" '(progn(memo-note memo)(fit-select)))  
 
   )
 )
 
 
 (defun assign-callback2()
-    (add-lisp-callback button98  "activateCallback" '(scan-zoom 0));;zoom-off
-    (add-lisp-callback button99  "activateCallback" '(scan-zoom 1));;zoom-on
-    (add-lisp-callback button97  "activateCallback" '(scan-focus));;focus
+    (set-lisp-callback button98  "activateCallback" '(scan-zoom 0));;zoom-off
+    (set-lisp-callback button99  "activateCallback" '(scan-zoom 1));;zoom-on
+    (set-lisp-callback button97  "activateCallback" '(scan-focus));;focus
   )
 )
 
 (defun calc-gap()
-  (let ((x))
-    (setq x (* (resource (G-widget "buf") :low-bound)(resource (G-widget "buf") :x-scale)))
+  (let ((x 0))
+    (if (string-equal (resource (source-widget (G-widget "scan-disp") 0) :name) "scan-source")
+      (setq x (* (resource (G-widget "buf") :low-bound)(resource (G-widget "buf") :x-scale))))
     (return x)
   )
 )
@@ -306,6 +308,27 @@
     (setq Ch (get-property gra (1- (round Ch)):name))
     (setq Tm (* (+ Tm t0)(resource gra :x-scale)))    
     (return (list (* Amp 1e+13) Ch Tm)) 
+  )
+)
+
+(defun calc-max-gra-matrix-simple(t0 span)
+  (let ((n)(gra (G-widget "gra"))(tt 1000)(t1)(t2)(amp)(Amp 0)(Ch)(Tm)(check)(x)(y))
+    (setq t0 (x-to-sample gra t0))
+    (setq span (x-to-sample gra span))
+    (setq t1 0 t2 (+ t1 tt))
+    (while (< t2 span)
+      (setq mtx (get-data-matrix gra (+ t0 t1) tt))
+      (setq x (matrix-extent mtx))
+      (setq amp (apply #'max (mapcar #'abs x)))
+      (if (> amp Amp)(setq Amp amp))
+      (setq t1 t2 t2 (+ t2 tt)))
+    (setq tt (- span t1))
+    (setq mtx (get-data-matrix gra (+ t0 t1) tt))
+    (setq x (matrix-extent mtx))
+    (setq amp (apply #'max (mapcar #'abs x)))
+    (setq check nil)
+    (if (> amp Amp)(setq Amp amp)) 
+    (return (* Amp 1e+13))
   )
 )
 
@@ -544,7 +567,7 @@
   (let ((n)(menubar01)(frame01)(form02)(buttons)(memo01)(pane01)(frame02)(frame03)(frame04)(pos))
     (if (G-widget "scan-disp" :quiet)(delete-memo))   
     (setq mid 55)
-    (setq form99 (make-form-dialog *application-shell* "form99" :autoUnmanage 0 :ersize 1))
+    (setq form99 (make-form-dialog *application-shell* "form99" :autoUnmanage 0 :resize 1))
     (setq menubar01 (make-menu-bar form99 "menubar99" :autounmanage 0
       :topAttachment   XmATTACH_FORM 
       :leftAttachment  XmATTACH_POSITION :leftPosition mid
@@ -576,8 +599,12 @@
     (setq pos (create-memo4 form99 pane01 memo99));;invisible structure    
     (create-memo5 form99 pane01);;scaned gra waves
     (create-memo6 form99 memo99 pos pane01);top left right    
-    (add-lisp-callback nmenu1  "valueChangedCallback" '(setq nmemo memo1))
-    (add-lisp-callback nmenu2  "valueChangedCallback" '(setq nmemo memo2))
+    (set-lisp-callback nmenu1  "valueChangedCallback" '(setq nmemo memo1))
+    (set-lisp-callback nmenu2  "valueChangedCallback" '(setq nmemo memo2))
+    (set-lisp-callback memo1   "focusCallback" 
+      '(progn (set-values nmenu1 :set 1)(set-values nmenu2 :set 0)(setq nmemo memo1)))
+    (set-lisp-callback memo2   "focusCallback" 
+      '(progn (set-values nmenu1 :set 0)(set-values nmenu2 :set 1)(setq nmemo memo2)))
     (setq nmemo memo1)
   )
 )
@@ -588,7 +615,8 @@
     (setq label (make-label frame "label" :childType XmFRAME_TITLE_CHILD 
       :labelString (XmString "miscellaneous")))
     (setq memo (make-scrolled-text frame "memo" :editMode XmMULTI_LINE_EDIT
-      :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM))
+      :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
+      :scrollHorizontal 0))
     (dolist (n (list form label  memo))(manage n))
     (return memo)
   )
@@ -605,11 +633,13 @@
     (set-values frame1-label 
       :labelString (XmString "  sec        span        sns          peak         fT/cm"))
     (setq memo (make-scrolled-text frame1 "memo" :editMode XmMULTI_LINE_EDIT
-      :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM))
+      :rows 5 :columns 30 :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
+      :scrollHorizontal 0))
     (dolist (n (list form frame1 frame1-label memo))(manage n))
     (return memo)
   )
 )
+
 (defun create-memo4(form pane memo)
   (let ((text01)(text02))
     (setq text01 (XmCreateText form "text01" (X-arglist) 0))
@@ -661,7 +691,8 @@
       :rightAttachment  XmATTACH_FORM)
     (XmTextSetString text97 (format nil "~0,2f" dipspan))
     (setq label01 (make-label form01 "label01" :labelString (XmString "length")
-      :bottomAttachment XmATTACH_FORM :rightAttachment XmATTACH_WIDGET :rightWidget text97))
+      :bottomAttachment XmATTACH_FORM  :bottomOffset 5 
+      :rightAttachment XmATTACH_WIDGET :rightWidget text97))
     (manage label01)
     (setq button99 (make-button form01 "button99" :labelString (XmString "zoom")
       :bottomAttachment XmATTACH_WIDGET :bottomWidget text97))
@@ -715,22 +746,23 @@
     (setq nmenu2 (XmCreateToggleButtonGadget rb "memo2" (X-arglist) 0))
     (set-values nmenu1 :set 1) 
     (dolist (n (list button1 button2 button3 button4 button5 rb nmenu1 nmenu2))(manage n))
-    (add-lisp-callback button1 "activateCallback" '(goto))
-    (add-lisp-callback button2 "activateCallback" '(full-view))
-    (add-lisp-callback button3 "activateCallback" '(memo-note))
-    (add-lisp-callback button4 "activateCallback" '(fit-select))
-    (add-lisp-callback button5 "activateCallback" '(progn(memo-note)(fit-select)))
+    (set-lisp-callback button1 "activateCallback" '(goto))
+    (set-lisp-callback button2 "activateCallback" '(full-view))
+    (set-lisp-callback button3 "activateCallback" '(memo-note))
+    (set-lisp-callback button4 "activateCallback" '(fit-select))
+    (set-lisp-callback button5 "activateCallback" '(progn(memo-note)(fit-select)))
     (return button1)
   )
 )
 
 (defun create-memo-menu(bar)
-  (let ((menus)(n))
+  (let ((menus)(n)(nn))
     (setq menu1 (make-menu bar "menu" nil
       '("save as *-wave.txt" (memo-text-save))
       '("load *-wave.txt"    (memo-text-load))))
-    (setq menu2 (make-menu bar "waves"))
-    (make-menu menu2 "waves" nil :tear-off
+    ;(make-menu menu2 "waves" nil :tear-off)
+    ;(dolist (n wave-name)(add-button menu2 n (memo-insert n)))
+    (setq menu2 (make-menu bar "waves" nil :tear-off
       '("discharge"    (memo-insert "discharge"))
       '("spike"        (memo-insert "spike"))
       '("polyspike"    (memo-insert "polyspike"))
@@ -739,8 +771,9 @@
       '("EEG spike"    (memo-insert "EEG spike"))
       '("physiological activities"  (memo-insert "phyisological activities"))
       '("noise"        (memo-insert "noise"))
-      '("???"          (memo-insert "???")))
+      '("???"          (memo-insert "???"))))
     (setq menu3 (make-menu bar "display"))
+    (add-button menu3 "clear" '(XmTextSetString nmemo ""))
     (add-button menu3 "default-display" '(set-default-display))
     (add-button menu3 "delete non-sense lines" '(memo-delete-nil nmemo))
     (make-menu menu3 "sort" nil :tear-off
@@ -755,6 +788,9 @@
     (add-button menu4 "conescutive fit" '(consecutive-fit))
   )
 )
+
+;(progn (dolist (n wave-name)(add-button menu2 n (memo-insert n))))
+
 
 (defun create-widgets()
   (let ((w)(widget-name)(n)(gw)(L1)(L2))
@@ -1061,6 +1097,7 @@
             :selection-start t0 :selection-length span))
         (setq d1 (G-widget "disp001") wp (G-widget "win-peak") dp (G-widget "disp-peak"))
         (set-resource (G-widget "win-peak")  :point t0 :start 0 :end span)
+        (link (G-widget "win-peak")(G-widget "disp-peak"))
         (set-resource (G-widget "disp-peak") :point 0 :length span)
         (set-resource (G-widget "disp-peak") 
           :scales (make-matrix (resource (G-widget "disp-peak"):channels) 1 (* amp 1e-13)))
@@ -1249,6 +1286,10 @@
     (XmTextSetString nmemo str0)
     (info "peak at center")
   )
+)
+
+(defun memo-clear(memo)
+  (XmTextSetString nmemo "")
 )
 
 (defun memo-delete-nil(memo)
@@ -1458,7 +1499,7 @@
 )
 
 (defun run() 
-  (let ((filename));;filename is tagert fiff file
+  (let ((filename));;filename is tagert fiff file 
     (initialize)
     (open-diskfile filename)
     (set-default-display))
@@ -1533,6 +1574,7 @@
     (setq tt (apply #'max (mapcar #'abs (matrix-extent MTX))))
     (set-resource scan-disp :scales (make-matrix nch 1 (/ tt 1.8)))
     (scan-max-dispcolor)
+    ;(scan-max-delay)
   )
 )
 
@@ -1620,7 +1662,7 @@
     (setq t0    (resource w :selection-start))
     (setq t1 (+ t0 (calc-gap)))
     (setq tspan (resource w :selection-length))
-    ;(print (list span span2 tspan))
+    (link nil-pointer (G-widget "disp-peak"))
     (if (<= tspan 0.0)
       (progn 
         (GtUnlinkWidget w2)
@@ -1638,8 +1680,9 @@
           (dotimes (x 9)
             (setq disp (G-widget (format nil "disp00~d" (1+ x))))
             (set-resource disp :selection-start t3 :selection-length tspan))
-            (set-resource (G-widget "win-peak") :point t3 :end tspan)
-            (set-resource (G-widget "disp-peak") :point 0 :length tspan)))
+          (set-resource (G-widget "win-peak") :point t3 :end tspan)
+          (link (G-widget "win-peak")(G-widget "disp-peak"))
+          (set-resource (G-widget "disp-peak") :point 0 :length tspan)))
         (setq x (calc-max-gra-matrix t1 tspan))
         (setq amp (first x) t3 (third x))
         (setq amp (* amp 1e-13) t3 (- t3 (/ span2 2)))
@@ -1813,4 +1856,17 @@
 (progn
   (if (G-widget "display" :quiet)(GtDeleteWidget (G-widget "display")))
   ;(initialize);; it does not compatible with GtDeleteWidget & this code.  Execute separetely!
+)
+
+
+(defun forPPT()
+  (setq form1 (make-form *application-shell* "form1" :autoUnmanage 0 :resize 1))
+  (manage form1); Nothing appeared!
+  (XtDestroyWidget form1)
+  (setq form1 (make-form-dialog *application-shell* "form1" :autoUnmanage 0 :resize 1))
+  (manage form1)
+  ;(setq menubar1 (make-menu-bar form1 "menubar1" :autoUnmanage 0))
+  ;(manage menubar1)
+  (setq button1 (make-button form1 "button1"))
+  (manage button1)
 )
