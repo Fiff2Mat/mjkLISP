@@ -33,7 +33,9 @@
     '("EEG : MEG | meg" (change-layout 2))
     '("EEG : MEG : meg" (change-layout 5))
     '("8meg :EEG"       (change-layout 3))
-    '("paned MEG : meg :EEG" (change-layout  4)))
+    '("paned MEG : meg :EEG" (change-layout  4))
+    '("MEG:paned  meg:EEG" (change-layout 6))
+    '("meg:paned MEG:EEG" (change-layout 7)))
 )
 
 (defun add-megsel()
@@ -321,6 +323,8 @@
       ((= nn 3)(layout2))
       ((= nn 4)(layout3))
       ((= nn 5)(layout4))
+      ((= nn 6)(layout5))
+      ((= nn 7)(layout6))
     )
     (set-values frame001 :width 200);;necessary!
     (set-values gra204 :set 1)(set-values mag102 :set 0)
@@ -1316,7 +1320,7 @@
 ))
 
 (defun layout4()
-  (let ((n)(form1)(form2)(form3)(x))
+  (let ((n)))
     (layout-routine)
     (make-plotter 0 100  0  33 form002 "disp009")
     (make-meg8    0 100 33  67 form002 "disp001")
@@ -1325,6 +1329,49 @@
       (layout1gra)
       (change-megsel "gra-L-temporal")))
 ))
+
+(defun layout5()
+  (let ((n)(pane)(form1)(form2)(x))
+    (layout-routine)
+    (make-meg8 0 100 0 50 form002 "disp001")
+    (setq pane (XmCreatePanedWindow form002 "pane" (X-arglist) 0))
+    (set-values pane :separatorOn 0 :sasIndent -1 :resize 1
+      :topAttachment XmATTACH_FORM  :bottomAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_POSITION :leftPosition 50
+      :rightAttachment  XmATTACH_FORM)
+    (manage pane)
+    (setq form1 (make-form pane "form1"))
+    (setq form2 (make-form pane "form2"))       
+    (make-plotter 0 100 0 100 form1 "disp000"); selected MEG
+    (make-plotter 0 100 0 100 form2 "disp009"); EEG etc 
+    (manage form1)
+    (manage form2)
+    (if (get-property (G-widget "gra") 0 :kind)(progn
+      (layout1gra)
+      (change-megsel "gra-L-temporal")))
+))
+
+(defun layout6()
+  (let ((n)(pane)(form1)(form2)(x))
+    (layout-routine)
+    (make-plotter 0 100 0 50 form002 "disp000")
+    (setq pane (XmCreatePanedWindow form002 "pane" (X-arglist) 0))
+    (set-values pane :separatorOn 0 :sasIndent -1 :resize 1
+      :topAttachment XmATTACH_FORM  :bottomAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_POSITION :leftPosition 50
+      :rightAttachment  XmATTACH_FORM)
+    (manage pane)
+    (setq form1 (make-form pane "form1"))
+    (setq form2 (make-form pane "form2"))       
+    (make-meg8    0 100 0 100 form1 "disp001")
+    (make-plotter 0 100 0 100 form2 "disp009"); EEG etc 
+    (manage form1)
+    (manage form2)
+    (if (get-property (G-widget "gra") 0 :kind)(progn
+      (layout1gra)
+      (change-megsel "gra-L-temporal")))
+))
+
 
 (defun make-chname()
   (let ((x)(y)(ch nil))
@@ -1655,6 +1702,18 @@
         (setq sns (format nil "~a" (third R)))
         (unless (string-equal sns (string-trim "MEG" sns))
           (fitcore (first R)(second R) sns (fourth R))))))
+))
+
+(defun memo-fullview();unused
+   (let ((R)(sns))
+     (setq R (memo-readline))
+     (when (> (length R) 4)(progn
+       (setq sns (format nil "~a" (third R)))
+       (unless (string-equal sns (string-trim "MEG" sns))(progn
+         (memo-goto)
+         (fit000)
+         (xfit-command "fullview")
+     )))))
 ))
 
 (defun memo-getline()
@@ -2193,11 +2252,13 @@
     (set-resource M :matrix (transpose mtx) :x-scale step :x-unit "s")
     (setq w (G-widget "scan"))
     (set-resource w :superpose t)
-    (link M w)
+    (link M w);; this must be here!
+    (set-resource w :point 0 :length x)
 ))
 
-(defun scan-select-hook()
+(defun scan-select-hook(&optional (nn 0))
   (let ((w (G-widget "scan"))(b (G-widget "buf"))(t0)(span)(span2)(gap))
+    (if (= nn 0)(setq w (G-widget "scan"))(setq w (G-widget "scan1")))
     (setq t0   (resource w :selection-start))
     (setq span (resource w :selection-length))
     (setq span2 (read-from-string (XmTextGetString text-length)))
@@ -2206,6 +2267,32 @@
     (setq t0 (+ t0 gap))
     (XmTextSetString text-start (format nil "~0,2f" t0))
     (change-start)
+))
+
+(defun scan1-plot()
+  (let ((w0)(w1)(w2)(w3)(n)(names)(mtx))
+    (unless (G-widget "scan1" :quiet)(require-widget :plotter "scan1"))
+    (unless (G-widget "fmul" :quiet)(require-widget :unary "fmul"))
+    (setq w0 (G-widget "mtx"))
+    (setq w1 (G-widget "scan"))
+    (setq w2 (G-widget "fmul"))
+    (set-resource w2 :function 'fmul :arguments '(1e+13))
+    (setq w3 (G-widget "scan1"))
+    (link w0 w2)
+    (link w2 w3)
+    (setq names (list "L-temporal" "R-temporal" "L-parietal" "R-parietal" "L-occipital" "R-occipital" "L-frontal" "R-frontal"))
+    (dotimes (n 8)
+      (set-property w0 n :name (nth n names)))
+    (set-resource w3 :ch-label-space 120)
+    (setq names (list :point :length :default-color :background :highlight :baseline-color))
+    (dolist (n names)
+      (set-resource w3 n (resource w1 n)))
+    (setq n (matrix-extent (resource w0 :matrix)))
+    (setq n (* (second n) 1e+13))
+    (set-resource w3 :scales (make-matrix 8 1 n)
+                     :offsets (make-matrix 8 1 0.5)
+                     :select-hook '(scan-select-hook 1))
+    (GtPopupEditor w3)
 ))
 
 (defun screen-capture(&optional (disp form000))
@@ -2413,7 +2500,7 @@
     (setq tb5 (XmCreateToggleButtonGadget rb1 "tb5" (X-arglist) 0))
     (set-values tb3 :labelString (XmString "GRA") :set 0)
     (set-values tb4 :labelString (XmString "MAG") :set 0)
-    (set-values tb5 :labelString (XmString "all") :set 1)
+    (set-values tb5 :labelString (XmString "both") :set 1)
     (setq gramag 306);global variant
     (set-lisp-callback tb3 "valueChangedCallback" '(setq gramag 204))
     (set-lisp-callback tb4 "valueChangedCallback" '(setq gramag 102))
@@ -2554,7 +2641,7 @@
 ))
 
 (defun setframe002-scan(frame)
-  (let ((form)(text1)(text2)(R)(ar1)(ar2)(ar3)(ar4)(btn1)(btn2)(n))
+  (let ((form)(text1)(text2)(R)(ar1)(ar2)(ar3)(ar4)(btn1)(btn2)(btn3)(n))
     (setq form (make-form frame "form" :height 60 :width 200))
     (setq label (make-label form "label" :labelString (XmString "peaks")
       :rightAttachment XmATTACH_FORM :topAttachment XmATTACH_FORM
@@ -2573,6 +2660,11 @@
       :topAttachment    XmATTACH_WIDGET  :topWidget text1
       :bottomAttachment XmATTACH_FORM :rightOffset 10 :width 60))
     (set-button-noedge btn2)
+    (setq btn3 (make-button form "btn3" :labelString (XmString "8 waves")
+      :leftAttachment   XmATTACH_FORM 
+      :topAttachment    XmATTACH_WIDGET  :topWidget text1
+      :bottomAttachment XmATTACH_FORM :width 60))
+    (set-button-noedge btn3)
     (setq text2 (make-text form "text2" :width 70 
       :topAttachment    XmATTACH_FORM 
       :leftAttachment   XmATTACH_FORM))
@@ -2581,11 +2673,11 @@
     (setq ar1 (first R) ar2 (second R))
     (setq ar3 (XmCreateArrowButton form "arrow3" (X-arglist) 0))
     (setq ar4 (XmCreateArrowButton form "arrow4" (X-arglist) 0))
-    (set-values ar3 :leftAttachment XmATTACH_FORM :leftOffset 60
+    (set-values ar3 :leftAttachment XmATTACH_FORM :leftOffset 65
       :topAttachment    XmATTACH_WIDGET :topWidget text2 
       :shadowThickness 0 :detailShadowThickness 0 :foreground (rgb 0 0 150)
       :arrowDirection XmARROW_UP :width 15)
-    (set-values ar4 :leftAttachment XmATTACH_FORM :leftOffset 75
+    (set-values ar4 :leftAttachment XmATTACH_FORM :leftOffset 80
       :topAttachment    XmATTACH_WIDGET :topWidget text2 
       :shadowThickness 0 :detailShadowThickness 0 :foreground (rgb 0 0 150)
       :arrowDirection XmARROW_DOWN :width 15)    
@@ -2594,11 +2686,12 @@
     (setq text-peak text1)
     (set-lisp-callback btn1 "activateCallback" '(scan-data 0.5))    
     (set-lisp-callback btn2 "activateCallback" '(scan-check))
+    (set-lisp-callback btn3 "activateCallback" '(scan1-plot))
     (set-lisp-callback ar1  "activateCallback" '(UpDownText text-scan  1))
     (set-lisp-callback ar2  "activateCallback" '(UpDownText text-scan -1))  
     (set-lisp-callback ar3  "activateCallback" '(change-offsets -0.1))
     (set-lisp-callback ar4  "activateCallback" '(change-offsets  0.1))
-    (dolist (n (list label text1 text2 ar1 ar2 ar3 ar4 btn1 btn2 form))(manage n))))
+    (dolist (n (list label text1 text2 ar1 ar2 ar3 ar4 btn1 btn2 btn3 form))(manage n))))
 ))
 
 (defun setSSP()
