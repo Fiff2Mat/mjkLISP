@@ -502,6 +502,7 @@
     (if (not (G-widget "MEG" :quiet))(require-widget :pick "MEG" '("names" ("MEG*"))))
     (if (not (G-widget "MEG-fil" :quiet))(require-widget :fft-filter "MEG-fil" '("pass-band" (band-pass 3 35)))) 
     (if (not (G-widget "ssp" :quiet))(require 'ssp))
+    (set-resource (G-widget "ssp") :buffer-length 5000000)
     ; gra 26-26-26-26-24-24-26-26 mag 13-13-13-13-12-12-13-13
     (if (not (G-widget "meg" :quiet))(progn (require-widget :pick "meg")(set-resource (G-widget "meg") :names (append
       gra-L-temporal gra-R-temporal gra-L-parietal gra-R-parietal 
@@ -703,6 +704,22 @@
       '("build C-files (only 1st use)" (build)))
 ))
 
+(defun create-pca()
+  (let ((xsel)(t0)(t1))
+    (unless (G-widget "pca-fields" :quiet)(require 'pca))
+    (setq xsel (x-selection (G-widget "000")))
+    (if xsel 
+      (setq xsel (list (+ (first xsel)(resource (G-widget "win000") :point))(second xsel)))
+      (setq xsel (x-selection (G-widget "disp009"))))
+    (when xsel 
+      (when  xsel (progn 
+        (setq t0 (first xsel) t1 (second xsel)))
+        (if (> t1 0.001)(progn 
+          (graph::pca-on-widget (G-widget "ssp") t0 (+ t0 t1))
+          (graph::ssp-popup)
+          (graph::ssp-add-pca 8) ))))
+))
+
 (defun defchpos() 
   (let ((x)(y)(z)(dist)(chdist))
     (setq x '( -0.1066   -0.1020   -0.1085   -0.1099   -0.1074   -0.0989   -0.1011   -0.1083
@@ -809,6 +826,22 @@
 
 ;;VectorView Fp1 F3  C3 P3 O1: F7 T3 T5 Fp2 F4: C4 P4 O2 F8 T4: T6 Fz Cz Pz ;ECG EOG
 ;;newTRIUX   Fp1 Fp2 F7 F3 Fz: F4 F8 T3 C3  Cz: C4 T4 T5 P3 Pz: P4 T6 O1 O2 ;ECG EOG
+
+(defun diag(vec)
+  (let ((m 0)(n)(nn)(mtx nil))
+    (setq nn (array-dimensions vec))
+    (when (or (= (first nn) 1)(= (second nn) 1))
+      (setq nn (* (first nn)(second nn)))
+      (setq mtx (make-matrix (* nn nn) 1 0))
+      (dotimes (n nn)
+        (vset mtx m (vref vec n))
+        (setq m (+ m nn 1))
+      )
+      (setq mtx (redimension mtx nn nn))
+    )
+    (return mtx)
+))
+
 (defun EEGlead1() 
   (let ((n)(w)(chname))
     (dolist (w (list "EEG1" "EEG2" "fsub"))
@@ -1113,6 +1146,7 @@
     (chchsEEG)
     (add-button *command-menu* "capture this widnow" '(screen-capture))
     (add-button *command-menu* "noise level" '(calc-noise-level))
+    (add-button *command-menu* "PCA" '(create-pca))
     ;(manage *control-panel*)
     (setq nlayout 5)
     (setq form000 (make-form *main-window* "form000"))
