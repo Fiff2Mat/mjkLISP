@@ -1,115 +1,2933 @@
-(GtDeleteWidget (G-widget "display"))
+;; released by Akira Hashizume @ Hiroshima University Hospital
+;; on 2025 June 13th
 
-(defun subplot(form dispname left right top bottom no-controls)
-  "Usage (subplot-parent-form subplot-name left right top bottom)
-    creates subplot plotter."
-  (let ((disp nil)(dispw nil))
-    (setq disp  (GtMakeObject 'plotter 
-                :name dispname
-                :display-parent form 
-                :scroll-parent form
-                :no-controls no-controls))
+(defun add-arrows(form text labelname)
+  (let ((wd 15)(arrow1)(arrow2)(label))
+    (setq arrow1 (XmCreateArrowButton form "arrow1" (X-arglist) 0))
+    (setq arrow2 (XmCreateArrowButton form "arrow2" (X-arglist) 0))
+    (setq label  (XmCreateLabel       form "label"  (X-arglist) 0))
+    (set-values text :rightOffset wd)
+    (set-values arrow1 :leftAttachment XmATTACH_WIDGET :leftWidget text
+      :arrowDirection XmARROW_UP :width wd
+      :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget text
+      :shadowThickness 0 :detailShadowThickness 0
+      :foreground (rgb 0 100 0))
+    (set-values arrow2 :leftAttachment XmATTACH_WIDGET :leftWidget text
+      :arrowDirection XmARROW_DOWN :width wd
+      :bottomAttachment XmATTACH_OPPOSITE_WIDGET :bottomWidget text
+      :shadowThickness 0 :detailShadowThickness 0 :bottomOffset -3
+      :foreground (rgb 0 100 0))
+    (set-values label :labelString (XmString labelname)
+      :rightAttachment XmATTACH_WIDGET :rightWidget text 
+      :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget text 
+      :rightOffset 5 :topOffset 5)
+    (return (list arrow1 arrow2 label))
+))
+
+(defun add-color()
+  (make-menu *display-menu* "color" nil
+    '("default-white  background-black" (change-color 1))
+    '("default-black  background-white" (change-color 2)))
+)
+
+(defun add-layout()
+  (make-menu *display-menu* "layout" nil 
+    '("MEG : EEG | meg" (change-layout 1))    
+    '("EEG : MEG | meg" (change-layout 2))
+    '("EEG : MEG : meg" (change-layout 5))
+    '("8meg :EEG"       (change-layout 3))
+    '("paned MEG : meg :EEG" (change-layout  4))
+    '("MEG:paned  meg:EEG" (change-layout 6))
+    '("meg:paned MEG:EEG" (change-layout 7)))
+)
+
+(defun add-megsel()
+  (make-menu *display-menu* "MEG selection" nil :tear-off
+    '("gra-L-temporal"  (change-megsel "gra-L-temporal"))
+    '("gra-R-temporal"  (change-megsel "gra-R-temporal"))
+    '("gra-L-parietal"  (change-megsel "gra-L-parietal"))
+    '("gra-R-parietal"  (change-megsel "gra-R-parietal"))
+    '("gra-L-occipital" (change-megsel "gra-L-occipital"))
+    '("gra-R-occipital" (change-megsel "gra-R-occipital"))
+    '("gra-L-frontal"   (change-megsel "gra-L-frontal"))
+    '("gra-R-frontal"   (change-megsel "gra-R-frontal"))
+    '("mag-L-temporal"  (change-megsel "mag-L-temporal"))
+    '("mag-R-temporal"  (change-megsel "mag-R-temporal"))
+    '("mag-L-parietal"  (change-megsel "mag-L-parietal"))
+    '("mag-R-parietal"  (change-megsel "mag-R-parietal"))
+    '("mag-L-occipital" (change-megsel "mag-L-occipital"))
+    '("mag-R-occipital" (change-megsel "mag-R-occipital"))
+    '("mag-L-frontal"   (change-megsel "mag-L-frontal"))
+    '("mag-R-frontal"   (change-megsel "mag-R-frontal")))
+)
+
+(defun add-sync()
+  (if (G-widget "disp000" :quiet)(set-resource (G-widget "disp000");; selected MEG
+    :move-hook '(sync-move-hook (G-widget "disp000"))
+    :select-hook '(sync-select-hook (G-widget "disp000"))))
+  (if (G-widget "disp001" :quiet)(set-resource (G-widget "disp001")
+    :move-hook '(sync-move-hook (G-widget "disp001"))
+    :select-hook '(sync-select-hook (G-widget "disp001"))))
+  (if (G-widget "disp002" :quiet)(set-resource (G-widget "disp002")
+    :move-hook '(sync-move-hook (G-widget "disp002"))
+    :select-hook '(sync-select-hook (G-widget "disp002"))))
+  (if (G-widget "disp003" :quiet)(set-resource (G-widget "disp003")
+    :move-hook '(sync-move-hook (G-widget "disp003"))
+    :select-hook '(sync-select-hook (G-widget "disp003"))))
+  (if (G-widget "disp004" :quiet)(set-resource (G-widget "disp004")
+    :move-hook '(sync-move-hook (G-widget "disp004"))
+    :select-hook '(sync-select-hook (G-widget "disp004"))))
+  (if (G-widget "disp005" :quiet)(set-resource (G-widget "disp005")
+    :move-hook '(sync-move-hook (G-widget "disp005"))
+    :select-hook '(sync-select-hook (G-widget "disp005"))))
+  (if (G-widget "disp006" :quiet)(set-resource (G-widget "disp006")
+    :move-hook '(sync-move-hook (G-widget "disp006"))
+    :select-hook '(sync-select-hook (G-widget "disp006"))))
+  (if (G-widget "disp007" :quiet)(set-resource (G-widget "disp007")
+    :move-hook '(sync-move-hook (G-widget "disp007"))
+    :select-hook '(sync-select-hook (G-widget "disp007"))))
+  (if (G-widget "disp008" :quiet)(set-resource (G-widget "disp008")
+    :move-hook '(sync-move-hook (G-widget "disp008"))
+    :select-hook '(sync-select-hook (G-widget "disp008"))))
+  (if (G-widget "disp009" :quiet)(set-resource (G-widget "disp009");; EEG
+    :move-hook '(sync-move-hook (G-widget "disp009"))
+    :select-hook '(sync-select-hook (G-widget "disp009"))))
+)
+
+(defun autoscale(chtype);; under construction
+  (let ((n)(mtx)(w)(w0)(fs)(T0)(SPAN)(N)(ch nil)(range nil)(amp))
+    (setq w (G-widget "disp009"))
+    (setq w0 (G-widget "sel"))
+    (setq fs (resource w :x-scale))
+    (setq T0 (round   (/ (resource w :point) fs)))
+    (setq SPAN (round (/ (resource w :length) fs))) 
+    (cond
+      ((string-equal chtype "EEG")(progn
+        (setq N (resource w :channels))
+        (setq mtx (get-data-matrix w0 T0 SPAN))
+        (dotimes (n N)
+          (when (= (get-property w n :kind) 2)
+            (setq ch (append ch (list n)))))
+        (dolist (n ch)
+          (setq range (append range (matrix-extent (row n mtx)))))
+        (setq amp (eval (cons 'max (mapcar #'abs range))))
+        (XmTextSetString text-eeg (format nil "~0,0f" (* amp 1e+6)))
+        (change-eegscale)))
+      ((string-equal chtype "EOG")(progn
+        (setq N (resource w :channels))
+        (setq mtx (get-data-matrix w0 T0 SPAN))
+        (dotimes (n N)
+          (when (= (get-property w n :kind) 202)
+            (setq ch (append ch (list n)))))
+        (dolist (n ch)
+          (setq range (append range (matrix-extent (row n mtx)))))
+        (setq amp (eval (cons 'max (mapcar #'abs range))))
+        (XmTextSetString text-eog (format nil "~0,0f" (* amp 1e+6)))
+        (change-eegscale)))
+      ((string-equal chtype "ECG")(progn
+        (setq N (resource w :channels))
+        (setq mtx (get-data-matrix w0 T0 SPAN))
+        (dotimes (n N)
+          (when (= (get-property w n :kind) 402)
+            (setq ch (append ch (list n)))))
+        (dolist (n ch)
+          (setq range (append range (matrix-extent (row n mtx)))))
+        (setq amp (eval (cons 'max (mapcar #'abs range))))
+        (XmTextSetString text-ecg (format nil "~0,0f" (* amp 1e+6)))
+        (change-eegscale)))
+      ((string-equal chtype "MEG")(progn
+        (setq mtx (get-data-matrix (G-widget "gra") T0 SPAN))
+        (setq range (matrix-extent mtx))
+        (setq amp (eval (cons 'max (mapcar #'abs range))))
+        (XmTextSetString text-gra (format nil "~0,0f" (* amp 1e+13)))
+        (change-grascale)
+        (setq mtx (get-data-matrix (G-widget "mag") T0 SPAN))
+        (setq range (matrix-extent mtx))
+        (setq amp (eval (cons 'max (mapcar #'abs range))))
+        (XmTextSetString text-mag (format nil "~0,0f" (* amp 1e+15)))
+        (change-magscale)))
+    )
+))
+
+(defun build()
+  (let ((dir)(str)(files))
+    (setq files (list "read_bdip" "delete_lowgof" "select_time"))
+    (setq dir (string-right-trim "hns_meg5" *hns-meg*))
+    (dolist (n files)
+      (if (string-equal n "read_bdip")
+        (setq str (format nil "gcc ~a~a5.c -o ~a~a" dir n dir n))
+        (setq str (format nil "gcc ~a~a.c -o ~a~a" dir n dir n)))
+      (print str)
+      (system str)
+      (setq str (format nil "chmod +x ~a~a" dir n))
+      (print str)
+      (system str))
+    (print (format nil "~d files are build" (length files)))
+))
+
+(defun calc-near-coil()
+  (let ((R nil)(dist)(x)(xx)(chname))
+    (setq chname (make-chname))
+    (dotimes (i (length ch-dist))
+      (setq dist (nth i ch-dist))
+      (setq x (sort-order dist))
+      (setq xx nil)
+      (dolist (j x)
+        (setq xx (append xx (list (nth j chname)))))
+      (setq R (append R (list xx))))
+    (return R)
+))
+
+(defun calc-noise-level()
+  (let ((w1)(w2)(w3)(t0)(span)(mtx)(ave-gra)(ave-mag)(w)(N)(str))
+    (setq t0   (resource (G-widget "disp009") :selection-start))
+    (setq span (resource (G-widget "disp009") :selection-length))
+    (unless (G-widget "nzwin" :quiet)
+      (setq w1 (require-widget :data-window "nzwin")))
+    (unless (G-widget "nzabs" :quiet)
+      (setq w2 (require-widget :unary "nzabs")))
+    (unless (G-widget "nzvecop" :quiet)
+      (setq w3 (require-widget :vecop "nzvecop")))
+    (set-resource w1 :point t0 :start 0 :end span)
+    (set-resource w2 :function 'fabs)
+    (set-resource w3 :mode "average")
+    (link (G-widget "gra")w1)
+    (link w1 w2)
+    (link w2 w3)
+    (setq N (resource w1 :high-bound))
+    (setq mtx (get-data-matrix w3 0 N));#<1xN matrix> no channel info
+    (setq ave-gra (/ (* mtx (ruler-vector 1 1 N))N))
+    (setq ave-gra (* ave-gra 1e+13))
+    (link (G-widget "mag") w1)
+    (setq mtx (get-data-matrix w3 0 N))
+    (setq ave-mag (/ (* mtx (ruler-vector 1 1 N))N))
+    (setq ave-mag (* ave-mag 1e+15))
+    (info (format nil "  noise level~% gradiometer ~0,1f [fT/cm]~% magnetometer ~0,1f [fT]" ave-gra ave-mag))       
+    (setq str (format nil "noise constant ~0,1f ~0,1f ~%" ave-gra ave-mag))
+    (xfit-command str)
+    (xfit-command "qscale 20")
+    (dolist (w (list w1 w2 w3))(GtDeleteWidget w))   
+))
+
+(defun calc-noise-level-old()
+  (let ((w)(t0)(R)(span)(smp)(mtx)(ave-gra)(ave-mag)(str))
+    (setq w (G-widget "disp001"))
+    (setq R (GtGetResources w (list "selection-start" "selection-length")))
+    (setq t0 (first R) span (second R))
+    (if (> span 0)(progn
+      (setq smp (/ 1 (resource w :x-scale)))
+      (setq t0   (round (* t0 smp)))
+      (setq span (round (* span smp)))
+      (setq mtx (get-data-matrix (G-widget "gra") t0 span))
+      (setq mtx (map-matrix mtx #'abs))
+      (setq ave-gra (matrix-element-sum mtx))
+      (setq ave-gra (/ ave-gra (* 204 span)))
+      (setq mtx (get-data-matrix (G-widget "mag") t0 span))
+      (setq mtx (map-matrix mtx #'abs))
+      (setq ave-mag (matrix-element-sum mtx))
+      (setq ave-mag (/ ave-mag (* 102 span)))
+      (setq ave-gra (* ave-gra 1e+13))
+      (setq ave-mag (* ave-mag 1e+15))
+      (info (format nil "  noise level~% gradiometer ~0,1f [fT/cm]~% magnetometer ~0,1f [fT]" ave-gra ave-mag)) 
+      (setq str (format nil "noise constant ~0,1f ~0,1f ~%" ave-gra ave-mag))
+      (xfit-command str)
+      (xfit-command "qscale 20")
+      (return (list ave-gra ave-mag))
+    ))
+))
+
+(defun calctimes()
+  (let ((tmin)(tmax)(span)(x)(smp)(w))
+    (setq w (G-widget "buf"))
+    (setq smp (resource w :x-scale))
+    (setq tmin (* smp (resource w :low-bound)))
+    (setq tmax (* smp (resource w :high-bound)))
+    (setq span (read-from-string (XmTextGetString text-length)))
+    (return (list tmin tmax span)) 
+))
+
+(defun change-color(nn)
+  (let ((n)(dc)(bg)(hl)(bc)(disp)(w (G-widget "disp001")))
+    ;default-color background highlight baseline-color
+    (cond 
+      ((= nn 0)(setq dc (resource w :default-color)
+                     bg (resource w :background)
+                     hl (resource w :highlight)
+                     bc (resource w :baseline-color)))
+      ((= nn 1)(setq dc "white" bg "black" hl "white" bc "white"))
+      ((= nn 2)(setq dc "black" bg "white" hl "gray80" bc "white"))
+    )
+    (dotimes (n 10)
+      (setq disp (format nil "disp00~a" n))
+      (if (G-widget disp :quiet)(set-resource (G-widget disp)
+        :default-color dc :background bg :highlight hl :baseline-color bc)))
+    (set-resource (G-widget "000")
+        :default-color dc :background bg :highlight hl :baseline-color bc)
+    (if (G-widget "scan" :quiet)(set-resource (G-widget "scan")
+     :default-color dc :background bg :highlight hl :baseline-color bc))
+))
+
+(defun change-eegscale()
+  (let ((w)(n)(eegscale)(ecgscale)(emgscale)(eogscale)(mtx nil)(kind))
+    (setq w (G-widget "disp009"))
+    (setq eegscale (list (get-eegscale)))
+    (setq ecgscale (list (get-ecgscale)))
+    (setq emgscale (list 1));;tentative!
+    (setq eogscale (list (get-eogscale)))
+    (dotimes (n (resource w :channels))
+      (setq kind (get-property w n :kind))
+      (cond ((= kind   2)(setq mtx (append mtx eegscale)))
+            ((= kind 402)(setq mtx (append mtx ecgscale)))
+            ((= kind 202)(setq mtx (append mtx eogscale)))))
+    (setq mtx (transpose (matrix (list mtx))))
+    (set-resource w :scales mtx)
+))
+
+(defun change-grascale()
+  (let ((scale)(scale2)(n)(w)(nch))
+    (setq scale (get-grascale))
+    (dotimes (n 10)
+      (setq w (format nil "disp00~a" n))
+      (if (G-widget w :quiet)(progn
+        (if (resource (G-widget w) :superpose)
+          (setq scale2 (* scale 16))(setq scale2 scale));8* 2
+        (setq nch (resource (G-widget w) :channels))
+        (if (> nch 0)
+          (if (string-equal (checkchannel (G-widget w)) "GRA")(progn
+            (set-resource (G-widget w) :scales (make-matrix nch 1 scale2))))))))
+))
+
+(defun change-grascale000(nn)
+  (let ((mtx))
+    (setq mtx (resource (G-widget "000") :scales))
+    (if (not mtx)(setq mtx (make-matrix 204 1 (get-grascale))))
+    (cond 
+      ((= nn  1)(setq mtx (* mtx 1.25)))
+      ((= nn -1)(setq mtx (* mtx 0.8)))
+    )
+    (set-resource (G-widget "000") :scales mtx)
+))
+
+(defun change-layout(nn)
+  (let ((n)(disp)(eeg)(t0)(t1)(span)(span2)(col))
+    (if (= nn 0)(setq nn nlayout))
+    (setq nlayout nn)
+    (if (string-equal (resource (G-widget "disp001") :default-color) "white")
+        (setq col 1)(setq col 2))
+    (setq disp (G-widget "disp001"))
+    (setq t0    (read-from-string (XmTextGetString text-start)))
+    (setq span  (read-from-string (XmTextGetString text-length)))
+    (setq t1    (resource disp :selection-start))
+    (setq span2 (resource disp :selection-length))
+
+    (cond
+      ((= nn 1)(layout1 0))
+      ((= nn 2)(layout1 1))
+      ((= nn 3)(layout2))
+      ((= nn 4)(layout3))
+      ((= nn 5)(layout4))
+      ((= nn 6)(layout5))
+      ((= nn 7)(layout6))
+    )
+    (set-values frame001 :width 200);;necessary!
+    (set-values gra204 :set 1)(set-values mag102 :set 0)
+    (if (< (resource (G-widget "disp009") :channels) 3)(EEGlead1))
+    (dotimes (n 10)
+      (setq disp (format nil "disp00~a" n))
+      (if (G-widget disp :quiet)(set-resource (G-widget disp)
+        :point t0 :length span :selection-start t1 :selection-length span2)))
+    (add-sync)
+    (change-color col)
+    (if (get-property (G-widget "gra") 0 :kind)(progn
+      (change-grascale)
+      (change-eegscale)))
+    (set-values form001 :bottomOffset 50)
+))
+
+(defun change-length()
+  (let ((str)(x)(n))
+    (setq str (XmTextGetString text-length))
+    (setq x (read-from-string str))
+    (dotimes (n 10)
+      (setq str (format nil "disp00~a" n))
+      (if (G-widget str :quiet)
+        (set-resource (G-widget str) :length x)))
+))
+
+(defun change-magscale()
+  (let ((scale)(scale2)(n)(w)(nch))
+    (setq scale (get-magscale))
+    (dotimes (n 10)
+      (setq w (format nil "disp00~a" n))
+      (if (G-widget w :quiet)(progn
+        (if (resource (G-widget w) :superpose)
+          (setq scale2 (* scale 16))(setq scale2 scale));8* 2
+        (setq nch (resource (G-widget w) :channels))
+        (if (> nch 0)
+          (if (string-equal (checkchannel (G-widget w)) "MAG")
+            (set-resource (G-widget w) :scales (make-matrix nch 1 scale2)))))))
+))
+
+(defun change-megsel(str); gra 26-26-26-26-24-24-26-26 mag 13-13-13-13-12-12-13-13
+  (let ((megsel)(disp)(name)(t0)(span)(t1)(span2)(n)(megscale))
+    (setq megsel (G-widget "meg-sel"))
+    (if (not (G-widget "disp000" :quiet))(setq disp (require-widget :plotter "disp000")))
+    (setq disp (G-widget "disp000"))
+    (setq t0    (read-from-string (XmTextGetString text-start)))
+    (setq span  (read-from-string (XmTextGetString text-length)))    
+    (setq t1    (resource (G-widget "disp001") :selection-start))
+    (setq span2 (resource (G-widget "disp001") :selection-length))       
+    (cond 
+      ((string-equal str "gra-L-temporal") (select-to megsel (meg   0 -  25)))
+      ((string-equal str "gra-R-temporal") (select-to megsel (meg  26 -  51)))
+      ((string-equal str "gra-L-parietal") (select-to megsel (meg  52 -  77)))
+      ((string-equal str "gra-R-parietal") (select-to megsel (meg  78 - 103)))
+      ((string-equal str "gra-L-occipital")(select-to megsel (meg 104 - 127)))
+      ((string-equal str "gra-R-occipital")(select-to megsel (meg 128 - 151)))
+      ((string-equal str "gra-L-frontal")  (select-to megsel (meg 152 - 177)))
+      ((string-equal str "gra-R-frontal")  (select-to megsel (meg 178 - 203)))
+      ((string-equal str "mag-L-temporal") (select-to megsel (meg 204 - 216)))
+      ((string-equal str "mag-R-temporal") (select-to megsel (meg 217 - 229)))
+      ((string-equal str "mag-L-parietal") (select-to megsel (meg 230 - 242)))
+      ((string-equal str "mag-R-parietal") (select-to megsel (meg 243 - 255)))
+      ((string-equal str "mag-L-occipital")(select-to megsel (meg 256 - 267)))
+      ((string-equal str "mag-R-occipital")(select-to megsel (meg 268 - 279)))
+      ((string-equal str "mag-L-frontal")  (select-to megsel (meg 280 - 292)))
+      ((string-equal str "mag-R-frontal")  (select-to megsel (meg 293 - 305)))
+    )
+    (link megsel disp)
+    (set-resource disp :point t0 :length span :ch-label-space 80)
+    (if (string-equal str (string-left-trim "m" str))
+      (setq megscale (get-grascale))(setq megscale (get-magscale)))
+    (set-resource disp :scales (make-matrix (resource disp :channels) 1 megscale))
+    (set-resource disp :selection-start t1 :selection-length span2)
     (GtPopupEditor disp)
-    (setq dispw (resource disp :display-widget))
-    (set-values dispw
-      "resizable"        0
-      "leftAttachment"   5
-      "leftPosition"     left      
-      "leftOffsett"      0
-      "rightAttachment"  5
-      "rightPosition"    right
-      "topAttachment"    5
-      "topPosition"      top      
-      "bottomAttachment" 5
-      "bottomPosition"   bottom))
-);;This function must exist ahead of func CreateTwoWindows
+    (dotimes (n 10)
+      (setq disp (format nil "disp00~a" n))
+      (if (G-widget disp :quiet)(set-resource (G-widget disp)
+        :selection-start t1 :selection-length span2)))
+    (add-sync)
+    (change-color 0)
+))
 
-(defun CreateScroll(dispname)
-  (set-values (resource (G-widget dispname) :scroll-widget)
-    "resizable" 0 
-    "leftAttachment" 5
-    "leftPosition" 0
-    "rightAttachment" 5
-    "rightPosition" 100
-    "topAttachment" 5
-    "topPosition" 95
-    "bottomAttachment" 5
-    "bottomPosition" 100)    
-  (set-resource (G-widget dispname) :scroll-visible 1) 
+(defun change-megsel2(nn)
+  (let ((str))
+    (cond
+      ((= nn 0)(setq str "L-temporal"))
+      ((= nn 1)(setq str "R-temporal"))
+      ((= nn 2)(setq str "L-parietal"))
+      ((= nn 3)(setq str "R-parietal"))
+      ((= nn 4)(setq str "L-occipital"))
+      ((= nn 5)(setq str "R-occipital"))
+      ((= nn 6)(setq str "L-frontal"))
+      ((= nn 7)(setq str "R-frontal"))
+    )
+    (if (string-equal (checkchannel (G-widget "disp001")) "GRA")
+      (setq str (format nil "gra-~a" str))
+      (setq str (format nil "mag-~a" str)))
+    (change-megsel str)
+))
+
+(defun change-memo(nn)
+  (let ((n)(N))
+    (setq nmemo nn)
+    (setq nn (- nn 1))
+    (setq N (list memo1 memo2 memo3))
+    (dotimes (n 3)
+      (if (= n nn)
+        (set-values (nth n N) :background (rgb 255 255 255))
+        (set-values (nth n N) :background (rgb 200 200 200))))
+))
+
+(defun change-offsets(x)
+  (let ((w (G-widget "scan"))(mtx))
+    (setq mtx (resource w :offsets))
+    (setq x (/ x 2))
+    (set-resource w :offsets (+ mtx (make-matrix 8 1 x)))
+))
+
+(defun change-scanscale()
+  (let ((x))
+    (setq x (read-from-string (XmTextGetString text-scan)))
+    (setq x (* x 1e-13))
+    (setq x (* x 4)); offset -0.9 amp *2
+    (set-resource (G-widget "scan") :scales
+      (make-matrix 8 1 x))
+))
+
+(defun change-start()
+  (let ((str)(x)(n)(tt))
+    (setq str (XmTextGetString text-start))
+    (setq x (read-from-string str))
+    (setq tt (calctimes))
+    (if (< x (first tt))(setq x (first tt)))
+    (setq tt (- (second tt)(third tt)))
+    (if (> x tt)(setq x tt))
+    (setq str (format nil "~0,2f" x))
+    (XmTextSetString text-start str)
+    (dotimes (n 10)
+      (setq str (format nil "disp00~a" n))
+      (if (G-widget str :quiet)
+        (set-resource (G-widget str):point x)))
+    (GtUnlinkWidget (G-widget "win000"))
+))
+
+(defun change-start000(nn)
+  (let ((w (G-widget "win000"))(t0)(span))
+    (setq t0   (resource w :point))
+    (setq span (resource w :end))
+    (setq span (* (/ span 4) nn))
+    (setq t0 (+ t0 span))
+    (set-resource w :point t0)
+))
+
+(defun chchsEEG();; EEG ECG EOG
+  (let ((n)(w))
+    (if (not (G-widget "EEG0" :quiet))(require-widget :pick "EEG0" 
+        '("names" ("EEG*" "ECG*" "EOG*"))))
+    (if (not (G-widget "ECG" :quiet))(require-widget :selector "ECG"))
+    (if (not (G-widget "EOG" :quiet))(require-widget :selector "EOG"))
+    (if (not (G-widget "EEG-fil" :quiet))(require-widget :fft-filter "EEG-fil" '("pass-band" (band-pass 0.5 50))))
+    (if (not (G-widget "ECG-fil" :quiet))(require-widget :fft-filter "ECG-fil" '("pass-band" (band-pass 0.5 50))))
+    (if (not (G-widget "EOG-fil" :quiet))(require-widget :fft-filter "EOG-fil" '("pass-band" (band-pass 0.5 50))))
+    (if (not (G-widget "sel" :quiet))(require-widget :selector "sel"))
+    (link (G-widget "buf")(G-widget "EEG0"))(link (G-widget "EEG0")(G-widget "EEG-fil"))
+    (link (G-widget "EEG0")(G-widget "ECG"))(link (G-widget "ECG")(G-widget "ECG-fil"))
+    (link (G-widget "EEG0")(G-widget "EOG"))(link (G-widget "EOG")(G-widget "EOG-fil"))
+))
+
+(defun chchsMEG()
+  (let ((n)(w)(ws1)(ws2))
+    (setq ws1 '("LT" "RT" "LP" "RP" "LO" "RO" "LF" "RF"))
+    (setq ws2 '(gra-L-temporal gra-R-temporal gra-L-parietal gra-R-parietal 
+                gra-L-occipital gra-R-occipital gra-L-frontal gra-R-frontal))
+    (if (not (G-widget "buf" :quiet))(require-widget :ringbuffer "buf" '("size" 5000000)))
+    (if (not (G-widget "MEG" :quiet))(require-widget :pick "MEG" '("names" ("MEG*"))))
+    (if (not (G-widget "MEG-fil" :quiet))(require-widget :fft-filter "MEG-fil" '("pass-band" (band-pass 3 35)))) 
+    (if (not (G-widget "ssp" :quiet))(require 'ssp))
+    (set-resource (G-widget "ssp") :buffer-length 5000000)
+    ; gra 26-26-26-26-24-24-26-26 mag 13-13-13-13-12-12-13-13
+    (if (not (G-widget "meg" :quiet))(progn (require-widget :pick "meg")(set-resource (G-widget "meg") :names (append
+      gra-L-temporal gra-R-temporal gra-L-parietal gra-R-parietal 
+      gra-L-occipital gra-R-occipital gra-L-frontal gra-R-frontal
+      mag-L-temporal mag-R-temporal mag-L-parietal mag-R-parietal 
+      mag-L-occipital mag-R-occipital mag-L-frontal mag-R-frontal))))
+    (if (not (G-widget "gra" :quiet))(require-widget :pick "gra" '("names" ("MEG*") "ignore" ("MEG*1"))))
+    (if (not (G-widget "mag" :quiet))(require-widget :pick "mag" '("names" ("MEG*") "ignore" ("MEG*2" "MEG*3"))))
+    (link (G-widget "file")(G-widget "buf"))
+    (link (G-widget "buf")(G-widget "MEG"))
+    (link (G-widget "MEG")(G-widget "ssp"))
+    (link (G-widget "ssp")(G-widget "MEG-fil"))
+    (link (G-widget "MEG-fil")(G-widget "meg"))
+    (link (G-widget "meg")(G-widget "gra"))
+    (link (G-widget "meg")(G-widget "mag"))
+    (if (not (G-widget "meg-sel" :quiet))(require-widget :selector "meg-sel"))
+    (if (not (G-widget "meg2" :quiet))(require-widget :pick "meg2"))
+    (link (G-widget "meg")(G-widget "meg-sel"));selector for L/R temp/pari/occi/fron
+    (link (G-widget "meg")(G-widget "meg2")); max sns +alpha
+    (if (not (G-widget "win000" :quiet))(require-widget :data-window "win000"))
+    (link (G-widget "gra")(G-widget "win000"))
+    (set-resource (G-widget "file") :directory "/data/neuro-data/*.fif")
+))
+
+(defun chchsMEGmax()
+  (let ((w1)(w2))
+    (unless (G-widget "mxwin" :quiet)(require-widget :data-window "mxwin"))
+    (unless (G-widget "mxvcp" :quiet)(require-widget :vecop "mxvcp"))
+    (setq w1 (G-widget "mxwin"))
+    (setq w2 (G-widget "mxvcp"))
+    (set-resource w2 :mode "max-abs")
+    (link w1 w2)
+))
+
+(defun checkchannel(w);G-widget
+  (let ((n 0)(kind)(str)(str1))
+    (setq kind (get-property w 0 :kind))
+    (if (= kind 1)(progn
+      (setq str (get-property w 0 :name))
+      (if (string-equal str (string-right-trim "1" str))
+        (setq n 3012)(setq n 3022)));; gra / mag
+      (setq n kind)) ;;2 EEG  402 ECG 202 EOG
+    (cond ((= n 3012)(return "GRA"))
+          ((= n 3022)(return "MAG"))
+          ((= n 2)(return "EEG"))
+          ((= n 402)(return "ECG"))
+          ((= n 302)(return "EMG"))
+          ((= n 202)(return "EOG")))
+))
+
+(defun create-initial-source()
+  (let ((w)(mtx)(n)(x)(y)(z)(kind)(ch)(CH nil))
+    (setq mtx (make-random-matrix (+ 306 19 1 1)(* 1 10)))
+    (setq w (require-widget :matrix-source "mtx"))
+    (set-resource w :matrix mtx :x-scale 1 :x-unit "s")
+    (dotimes (x 26)
+      (dotimes (y 4)
+        (dotimes (z 3)
+          (setq n (+ z 1 (* (+ y 1 (* (+ x 1) 10)) 10)))
+          (setq ch (list (format nil "MEG~a" n)))
+          (if (< n 830)(setq CH (append CH ch)))
+          (if (> n 850)(setq CH (append CH ch))))))
+    (dotimes (x 9)
+      (setq ch (list(format nil "EEG00~a" (+ x 1))))
+      (setq CH (append CH ch)))
+    (dotimes (x 10)
+      (setq ch (list (format nil "EEG0~a" (+ x 10))))
+      (setq CH (append CH ch)))
+    (setq CH (append CH (list "ECG001" "EOG001")))
+    (setq kind 1)
+    (dotimes (ch (length CH))
+      (set-property w ch :name (nth ch CH))
+      (if (> ch 306)(setq kind 2));;EEG
+      (if (= ch 325)(setq kind 402));;ECG
+      (if (= ch 326)(setq kind 202))
+      (set-property w ch :kind kind))
+      
+))    
+
+(defun create-launch()
+  (let ((btn)(h))
+    (setq form-launch (make-form-dialog *application-shell* "form-launch" 
+     :autoUnmanage 0 :resize 1))
+    (setq btn (make-button form-launch "btn" :labelString (XmString "Launch")
+      :topAttachment   XmATTACH_FORM :leftAttachment   XmATTACH_FORM
+      :rightAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM))
+    (set-values btn :width 200 :height 100 :background (rgb 0 255 255))
+    (dolist (n (list btn form-launch))(manage n))
+    (set-lisp-callback btn "activateCallback" '(initialize))
+))
+
+(defun create-memos()
+  (let ((form)(btn1)(btn2)(pane)(n)(bar))
+    (setq form (make-form-dialog *application-shell* "memos"
+      :autoUnmanage 0 :resize 1))
+    (setq bar (make-menu-bar form "bar" :autoUnmanage 0
+      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_FORM
+      :rightAttachment XmATTACH_FORM))
+    (create-memos-menu bar)
+    (setq btn1 (make-button form "btn1" :labelString (XmString "note")
+      :topAttachment XmATTACH_WIDGET :topWidget bar :height 30
+      :leftAttachment XmATTACH_FORM :width 50))
+    (setq btn2 (make-button form "btn2" :labelString (XmString "goto")
+      :topAttachment XmATTACH_WIDGET :topWidget bar :height 30
+      :leftAttachment XmATTACH_WIDGET :leftWidget btn1 :width 50))
+    (setq btn3 (make-button form "btn3" :labelString (XmString "fit")
+      :topAttachment XmATTACH_WIDGET :topWidget bar :height 30
+      :leftAttachment XmATTACH_WIDGET :leftWidget btn2 :width 50))
+    (setq label (make-label form "label" :labelString (XmString "GOF")
+      :topAttachment XmATTACH_WIDGET :topWidget bar :topOffset 5
+      :leftAttachment XmATTACH_WIDGET :leftWidget btn3 :leftOffset 10))
+    (setq text-gof (make-text form "text" ;;global variant
+      :topAttachment XmATTACH_WIDGET :topWidget bar 
+      :leftAttachment XmATTACH_WIDGET :leftWidget label :width 50))
+    (XmTextSetString text-gof "70")
+    (setq pane (XmCreatePanedWindow form "pane" (X-arglist) 0))
+    (set-values pane :separatorOn 0 :sasIndent -1
+      :topAttachment XmATTACH_WIDGET :topWidget btn1
+      :bottomAttachment XmATTACH_FORM
+      :leftAttachment   XmATTACH_FORM
+      :rightAttachment  XmATTACH_FORM)
+    (setq memo1 (create-memos-form pane));global variant
+    (setq memo2 (create-memos-form pane));global variant
+    (setq memo3 (create-memos-form pane));global variant
+    (dolist (n (list bar btn1 btn2 btn3 label text-gof pane form))(manage n))
+    (setq nmemo 1)
+    (set-values memo2 :background (rgb 200 200 200))
+    (set-values memo3 :background (rgb 200 200 200))
+    (set-lisp-callback memo1 "focusCallback" '(change-memo 1))
+    (set-lisp-callback memo2 "focusCallback" '(change-memo 2))
+    (set-lisp-callback memo3 "focusCallback" '(change-memo 3))
+    (set-lisp-callback btn1 "activateCallback" '(memo-note))
+    (set-lisp-callback btn2 "activateCallback" '(memo-goto))
+    (set-lisp-callback btn3 "activateCallback" '(memo-fit))
+    (setq form-memo form)
+))
+
+(defun create-memos-form(pane)
+  (let ((form)(frame)(memo)(n))
+    (setq form (make-form pane "form"))
+    (setq frame (make-frame form "frame" :resize 1
+      :topAttachment  XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_FORM :rightAttachment  XmATTACH_FORM))
+    (manage (make-label frame "label" :childType XmFRAME_TITLE_CHILD
+      :labelString (XmString "  sec        span        sns          peak         fT/cm")))
+    (setq memo (make-scrolled-text frame "memo" :editMode XmMULTI_LINE_EDIT
+      :rows 5 :columns 40 :topAttachment XmATTACH_FORM 
+      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
+      :bottomAttachment XmATTACH_FORM :scrollHorizontal 0))
+    (XmTextSetString memo "")
+    (dolist (n (list memo frame form))(manage n))
+    (return memo)
+))
+
+(defun create-memos-menu(bar)
+  (let ((n)(btn)(menu))
+    (make-menu bar "file" nil 
+      '("load *-wave.txt" (memo-load))
+      '("save *-wave.txt" (memo-save))
+      '("load BDIP file" (memo-dipload))
+      '("save as BDIP file" (memo-dipsave))
+      '("save consecutive epochs as PNG file" (memo-save-png)))
+    (setq menu (make-menu bar "display" nil 
+      '("clear"       (memo-clear))
+      '("clear all"   (memo-clear-all))))
+    (make-menu menu "waves" nil :tear-off
+      '("discharge"   (memo-insert " discharge"))
+      '("spike"       (memo-insert " spike"))
+      '("polyspike"   (memo-insert " polyspike"))
+      '("burst"       (memo-insert " burst"))
+      '("ictal onset" (memo-insert " ictal onset"))
+      '("EEG spike"   (memo-insert " EEG spike"))
+      '("physiological activities" (memo-insert " physiological activities"))
+      '("noise"       (memo-insert " noise"))
+      '("???"         (memo-insert " ???")))
+    (make-menu menu "copy" nil
+      '("to memo1" (memo-copy 1))
+      '("to memo2" (memo-copy 2))
+      '("to memo3" (memo-copy 3)))
+    (make-menu menu "sort" nil
+      '("time"      (memo-sort 3))
+      '("coil"      (memo-sort 2))
+      '("amplitude" (memo-sort 4)))
+    (make-menu bar "dipoles" nil
+      '("clear all dipoles" (memo-dipclear))
+      '("consecutive fit" (memo-fitfit))
+      '("read dipoles" (memo-readbdip))
+      '("extract high GOF dipoles" (memo-dipselect))
+      '("extract dipoles with PNG" (memo-dipselect-png))
+      '("extract epoch with dipoes" (memo-extractepoch)))
+    (make-menu bar "routine" nil
+      '("fit fit > GOF filter > a*.png" (routine1))
+      '("PNG filter > ep*.png" (routine2))
+      '("ep*.png > a*.png" (rename-png "ep" "a")))
+    (make-menu bar "miscellaneous" nil
+      '("calculation of noise level" (calc-noise-level))
+      '("time to selection" (memo-peak2selection 0))
+      '("time + gap to selection" (memo-peak2selection 1))
+      '("build C-files (only 1st use)" (build)))
+))
+
+(defun create-pca()
+  (let ((xsel)(t0)(t1))
+    (unless (G-widget "pca-fields" :quiet)(require 'pca))
+    (setq xsel (x-selection (G-widget "000")))
+    (if xsel 
+      (setq xsel (list (+ (first xsel)(resource (G-widget "win000") :point))(second xsel)))
+      (setq xsel (x-selection (G-widget "disp009"))))
+    (when xsel 
+      (when  xsel (progn 
+        (setq t0 (first xsel) t1 (second xsel)))
+        (if (> t1 0.001)(progn 
+          (graph::pca-on-widget (G-widget "ssp") t0 (+ t0 t1))
+          (graph::ssp-popup)
+          (graph::ssp-add-pca 8) ))))
+))
+
+(defun defchpos() 
+  (let ((x)(y)(z)(dist)(chdist))
+    (setq x '( -0.1066   -0.1020   -0.1085   -0.1099   -0.1074   -0.0989   -0.1011   -0.1083
+               -0.0861   -0.0887   -0.0702   -0.1003   -0.0808   -0.0526   -0.0537   -0.0829
+               -0.0637   -0.0332   -0.0337   -0.0672   -0.0358    0.0001   -0.0184   -0.0368
+               -0.0185    0.0186    0.0186   -0.0185    0.0001    0.0001    0.0331    0.0638
+                0.0671    0.0338    0.0001    0.0358    0.0368    0.0184    0.0525    0.0809
+                0.0828    0.0535    0.0862    0.1003    0.0887    0.0699    0.0989    0.1074
+                0.1083    0.1010    0.1020    0.1065    0.1098    0.1083   -0.1088   -0.1017  
+               -0.0951   -0.1068   -0.1017   -0.0952   -0.0781   -0.0866   -0.0758   -0.0861
+               -0.0632   -0.0489   -0.0786   -0.0518   -0.0181   -0.0552   -0.0513   -0.0335
+               -0.0331   -0.0636   -0.0186    0.0186    0.0169   -0.0170         0         0
+                0.0170   -0.0171    0.0517    0.0786    0.0553    0.0182    0.0513    0.0637
+                0.0330    0.0333    0.0952    0.1017    0.0866    0.0781    0.0630    0.0861
+                0.0757    0.0488    0.1087    0.1068    0.0951    0.1017))  
+    (setq y '(  0.0464    0.0631    0.0302    0.0131    0.0329    0.0403    0.0044   -0.0011
+                0.0988    0.0757    0.0758    0.0659    0.0413    0.0406    0.0059    0.0062
+                0.1254    0.1397    0.1274    0.1089    0.1048    0.0775    0.0440    0.0753
+                0.0105    0.0105   -0.0233   -0.0237    0.1445    0.1316    0.1397    0.1253
+                0.1088    0.1273    0.1093    0.1048    0.0752    0.0442    0.0406    0.0413
+                0.0061    0.0062    0.0986    0.0660    0.0757    0.0758    0.0404    0.0329
+               -0.0011    0.0044    0.0630    0.0469    0.0131    0.0301   -0.0032   -0.0360
+               -0.0524   -0.0205   -0.0339   -0.0308   -0.0628   -0.0640   -0.0797   -0.0660
+               -0.0905   -0.0994   -0.0287   -0.0277   -0.0542   -0.0627   -0.0861   -0.1033
+               -0.1051   -0.0884   -0.0801   -0.0802   -0.0972   -0.0972   -0.1086   -0.1106
+               -0.1098   -0.1098   -0.0276   -0.0284   -0.0628   -0.0542   -0.0861   -0.0884
+               -0.1051   -0.1034   -0.0306   -0.0338   -0.0639   -0.0629   -0.0906   -0.0661
+               -0.0798   -0.0994   -0.0033   -0.0206   -0.0524   -0.0361))
+    (setq z '( -0.0604   -0.0256   -0.0266   -0.0627    0.0080    0.0413    0.0408    0.0071
+                0.0090    0.0412    0.0707    0.0081    0.0720    0.0952    0.0969    0.0728
+                0.0136    0.0174    0.0485    0.0443    0.0750    0.0967    0.1063    0.0922
+                0.1096    0.1096    0.1059    0.1058    0.0187    0.0500    0.0173    0.0135
+                0.0444    0.0486    0.0771    0.0750    0.0923    0.1062    0.0953    0.0721
+                0.0728    0.0970    0.0089    0.0082    0.0412    0.0709    0.0413    0.0081
+                0.0068    0.0410   -0.0260   -0.0600   -0.0622   -0.0262   -0.0284   -0.0281
+               -0.0623   -0.0625    0.0056    0.0391    0.0394    0.0055   -0.0621   -0.0282
+               -0.0278   -0.0621    0.0696    0.0927    0.0923    0.0707    0.0397    0.0062
+               -0.0278    0.0060    0.0690    0.0689    0.0397    0.0397    0.0070   -0.0275
+               -0.0618   -0.0619    0.0928    0.0698    0.0706    0.0922    0.0397    0.0062
+               -0.0277    0.0063    0.0392    0.0058    0.0056    0.0394   -0.0276   -0.0280
+               -0.0620   -0.0621   -0.0280   -0.0621   -0.0620   -0.0278))
+    (setq chdist nil)
+    (dotimes (j (length x))
+      (progn
+        (setq dist nil)
+        (dotimes (i (length x))
+          (setq dist (append dist (list 
+            (+ (sqr (- (nth i x) (nth j x)))(sqr (- (nth i y)(nth j y)))(sqr (- (nth i z)(nth j z))))
+          ))))
+        (setq chdist (append chdist (list (mapcar #'sqrt dist))))))
+    (defparameter ch-dist chdist)
+    (defparameter near-coil (calc-near-coil))
+))
+
+(defun define-parameters()
+  (defparameter gra-L-temporal
+    '("MEG[ 223  222  212  213  133  132  112  113  233  232  242  243 1513 1512  142  143]" 
+      "MEG[1623 1622 1612 1613 1523 1522 1542 1543 1532 1533]"))
+  (defparameter gra-R-temporal
+    '("MEG[1313 1312 1322 1323 1443 1442 1422 1423 1343 1342 1332 1333 2613 2612 1432 1433]" 
+      "MEG[2413 2412 2422 2423 2643 2642 2622 2623 2632 2633]"))
+  (defparameter gra-L-parietal
+    '("MEG[ 632  633  423  422  412  413  712  713  433  432  442  443  742  743 1823 1822]" 
+      "MEG[1812 1813 1833 1832 1842 1843 1633 1632 2012 2013]"))
+  (defparameter gra-R-parietal
+    '("MEG[1042 1043 1113 1112 1122 1123  722  723 1143 1142 1132 1133  732  733 2213 2212]" 
+      "MEG[2222 2223 2243 2242 2232 2233 2443 2442 2022 2023]"))
+  (defparameter gra-L-occipital
+    '("MEG[2043 2042 1913 1912 2112 2113 1922 1923 1942 1943 1642 1643 1933 1932 1733 1732]" 
+      "MEG[1723 1722 2143 2142 1742 1743 1712 1713]"))
+  (defparameter gra-R-occipital
+    '("MEG[2033 2032 2313 2312 2342 2343 2322 2323 2432 2433 2123 2122 2333 2332 2513 2512]" 
+      "MEG[2523 2522 2132 2133 2542 2543 2532 2533]"))
+  (defparameter gra-L-frontal
+    '("MEG[ 522  523  512  513  312  313  342  343  123  122  823  822  533  532  543  542]" 
+      "MEG[ 323  322  612  613  332  333  623  622  643  642]"))
+  (defparameter gra-R-frontal
+    '("MEG[ 812  813  912  913  922  923 1212 1213 1222 1223 1413 1412  943  942  933  932]" 
+      "MEG[1233 1232 1012 1013 1022 1023 1242 1243 1033 1032]"))
+  (defparameter mag-L-temporal
+    '("MEG[ 221  211  131  111  231  241 1511  141 ]" "MEG[1621 1611 1521 1541 1531]"))
+  (defparameter mag-R-temporal
+    '("MEG[1311 1321 1441 1421 1341 1331 2611 1431]" "MEG[2411 2421 2641 2621 2631]"))
+  (defparameter mag-L-parietal
+    '("MEG[ 631  421  411  711  431  441  741 1821]" "MEG[1811 1831 1841 1631 2011]"))
+  (defparameter mag-R-parietal
+    '("MEG[1041 1111 1121  721 1141 1131  731 2211]" "MEG[2221 2241 2231 2441 2021]"))
+  (defparameter mag-L-occipital
+    '("MEG[2041 1911 2111 1921 1941 1641 1931 1731]" "MEG[1721 2141 1741 1711]"))
+  (defparameter mag-R-occipital
+    '("MEG[2031 2311 2341 2321 2431 2121 2331 2511]" "MEG[2521 2131 2541 2531]"))
+  (defparameter mag-L-frontal
+    '("MEG[ 521  511  311  341  121  821  531  541]" "MEG[ 321  611  331  621  641]"))
+  (defparameter mag-R-frontal
+    '("MEG[ 811  911  921 1211 1221 1411  941  931]" "MEG[1231 1011 1021 1241 1031]"))
+  (defparameter stepwise 0.5)
+  (defparameter npeaks 10)
+  (defparameter dipspan 0.2)
+  (defparameter nmenu 1)
+  ;; (defparameter defmemo memo98); this is defined after create-memo 
+  (defvar wave-name 
+      (list "discharge" "spike" "polyspike" "burst" "ictal onset" "EEG spike" "physiological activities" "noise" "???"))
 )
 
-(defun CreateTwoWindows()
-  (manage *control-panel*)
-  (setq newform (make-form *main-window* "newform"))
-  (set-values *main-window* "workwindow" newform)
-  (subplot newform "disp1" 0 45 0 95 t)
-  (subplot newform "disp2" 45 100 0 95 nil)
-)
+;;VectorView Fp1 F3  C3 P3 O1: F7 T3 T5 Fp2 F4: C4 P4 O2 F8 T4: T6 Fz Cz Pz ;ECG EOG
+;;newTRIUX   Fp1 Fp2 F7 F3 Fz: F4 F8 T3 C3  Cz: C4 T4 T5 P3 Pz: P4 T6 O1 O2 ;ECG EOG
 
+(defun diag(vec)
+  (let ((m 0)(n)(nn)(mtx nil))
+    (setq nn (array-dimensions vec))
+    (when (or (= (first nn) 1)(= (second nn) 1))
+      (setq nn (* (first nn)(second nn)))
+      (setq mtx (make-matrix (* nn nn) 1 0))
+      (dotimes (n nn)
+        (vset mtx m (vref vec n))
+        (setq m (+ m nn 1))
+      )
+      (setq mtx (redimension mtx nn nn))
+    )
+    (return mtx)
+))
 
+(defun EEGlead1() 
+  (let ((n)(w)(chname))
+    (dolist (w (list "EEG1" "EEG2" "fsub"))
+      (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
+    (require-widget :selector "EEG1")
+    (require-widget :selector "EEG2")
+    (require-widget :binary "fsub" '("function" fsub))
+    (if (= (get-property (G-widget "EEG0") 19 :kind) 202)(progn
+      (select-to (G-widget "EEG1")(EEG0 0 2  7 12 0 3  8 13 4  9 1  5 10 15 1  6 11 16))
+      (select-to (G-widget "EEG2")(EEG0 2 7 12 17 3 8 13 17 9 14 5 10 15 18 6 11 16 18)))(progn
+      (select-to (G-widget "EEG1")(EEG0 0 5 6 7 0 1 2 3 16 17 8  9 10 11  8 13 14 15))
+      (select-to (G-widget "EEG2")(EEG0 5 6 7 4 1 2 3 4 17 18 9 10 11 12 13 14 15 12))))
+    (select-to (G-widget "ECG")(EEG0 19))    
+    (select-to (G-widget "EOG")(EEG0 20))
+    (set-property (G-widget "ECG") 0 :kind 402)
+    (set-property (G-widget "EOG") 0 :kind 202)
+    (link (G-widget "EEG1")(G-widget "fsub"))
+    (link (G-widget "EEG2")(G-widget "fsub"))
+    (link (G-widget "fsub")(G-widget "EEG-fil"))
+    (link (G-widget "ECG")(G-widget "ECG-fil"))
+    (link (G-widget "EOG")(G-widget "EOG-fil"))
+    (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG-fil 0)(EOG-fil 0))
+    (setq chname (list "Fp1-F7" "F7-T3" "T3-T5" "T5-O1" "Fp1-F3" "F3-C3" "C3-P3" "P3-O1" 
+      "Fz-Cz" "Cz-Fz" "Fp2-F4" "F4-C4" "C4-P4" "P4-O2" "Fp2-F8" "F8-T4" "T4-T6" "T6-O2" 
+      "ECG" "EOG"))
+    (dotimes (n (resource (G-widget "sel") :channels))
+      (set-property (G-widget "sel") n :name (nth n chname)))  
+    (setq w (G-widget "disp009"))   
+    (link (G-widget "sel")w)(GtOrganizePanel)
+    (set-resource w :point (read-from-string (XmTextGetString text-start)))
+    (set-resource w :length (read-from-string (XmTextGetString text-length)))
+    (change-eegscale)
+))
 
-(defun list-contain(x xlist)
-  (let ((result nil))
-    (dotimes (i (length xlist) result)
-      (if (equal x (nth i xlist))
-        (return t)
-))))
+(defun EEGlead2()
+  (let ((n)(w)(chname))
+    (dolist (w (list "EEG1" "EEG2" "fsub"))
+      (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
+    (require-widget :selector "EEG1")
+    (require-widget :selector "EEG2")
+    (require-widget :binary "fsub" '("function" fsub))
+    (if (= (get-property (G-widget "EEG0") 19 :kind) 202)(progn
+      (select-to (G-widget "EEG1")(EEG0 2 0 1 2 3 4 5 7 8  9 10 12 13 14 15 12 17 18))
+      (select-to (G-widget "EEG2")(EEG0 0 1 6 3 4 5 6 8 9 10 11 13 14 15 16 17 18 16)))(progn
+      (select-to (G-widget "EEG1")(EEG0 5 0  8 5  1 16  9 6  2 17 10 7  3 18 11 7  4 12))
+      (select-to (G-widget "EEG2")(EEG0 0 8 13 1 16  9 13 2 17 10 14 3 18 11 15 4 12 15))))
+    (select-to (G-widget "ECG")(EEG0 19))    
+    (select-to (G-widget "EOG")(EEG0 20))
+    (set-property (G-widget "ECG") 0 :kind 402)
+    (set-property (G-widget "EOG") 0 :kind 202)
+    (link (G-widget "EEG1")(G-widget "fsub"))
+    (link (G-widget "EEG2")(G-widget "fsub"))
+    (link (G-widget "fsub")(G-widget "EEG-fil"))
+    (link (G-widget "ECG")(G-widget "ECG-fil"))
+    (link (G-widget "EOG")(G-widget "EOG-fil"))
+    (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG-fil 0)(EOG-fil 0))
+    (setq chname (list "F7-Fp1" "Fp1-Fp2" "Fp2-F8" "F7-F3" "F3-Fz" "Fz-F4" "F4-F8"
+      "T3-C3" "C3-Cz" "Cz-C4" "C4-T4" "T5-P3" "P3-Pz" "Pz-P4" "P4-T6" "T5-O1" "O1-O2" "O2-T6"
+      "ECG" "EOG"))
+    (dotimes (n (resource (G-widget "sel") :channels))
+      (set-property (G-widget "sel") n :name (nth n chname)))  
+    (setq w (G-widget "disp009"))   
+    (link (G-widget "sel")w)(GtOrganizePanel)
+    (set-resource w :point (read-from-string (XmTextGetString text-start)))
+    (set-resource w :length (read-from-string (XmTextGetString text-length)))
+    (change-eegscale)
+))
 
-(defun set_meg_scale()
-   (setq nch (resource (G-widget "meg") :channels))
-  
-
-
-)
-
-(defun set_scale()
-  (define-parameter-group 'my-scale "miscellaneous scales")
-  (defuserparameters my-scale
-    (gra-scale 5e-13 "gradiometer scale [T/m]" 'number)
-    (mag-scale 3e-10 "manetometer scale [T]" 'number)
-    (stim-scale 1e-6 "stim scale [V]" 'number)
-    (eeg-scale 1e-6 "EEG scale [V]" 'number)
-    (my-comment "nothing" "default" 'string) 
+(defun disp000(num)
+  (cond 
+    ((< num 10)(format nil "disp00~0,0d" num))
+    ((< num 100)(format nil "disp0~0,0d" num))
+    ((< num 1000)(format nil "disp~0,0d" num)) 
   )
 )
 
-(defun settings()
-  (require-widgets '(
-    (ringbuffer "buf" ("size" 5000000))
-    (fft-filter "band-pass1" ("pass-band" (band-pass 3 35)))
-    (fft-filter "band-pass2" ("pass-band" (band-pass 3 35)))
-    (pick "meg0")(pick "meg")(pick "gra")(pick "eeg")
-  ))
-  (require 'ssp)
-  ;;(require 'std-selections)
-  (set-resource (G-widget "gra") :names '("MEG*") :ignore '("MEG*1"))
-  (set-resource (G-widget "meg") :names '("MEG*"))
-  (set-resource (G-widget "meg0") :names '("MEG*"))
-  (set-resource (G-widget "eeg") :names '("EEG*"))
-  (set-resource (G-widget "disp1") :point 0.0 :length 10.0 :move-hook '(sync-view-2 *this* "disp2") :select-hook '(sync-selection *this* "disp2"))
-  (set-resource (G-widget "disp2") :point 0.0 :length 10.0 :move-hook '(sync-view-2 *this* "disp1") :select-hook '(sync-selection *this* "disp1"))
-  (link (G-widget "file")(G-widget "buf"))
-  (link (G-widget "buf")(G-widget "meg0"))
-  (link (G-widget "buf")(G-widget "eeg"))
-  (link (G-widget "meg0")(G-widget "ssp"))
-  (link (G-widget "ssp")(G-widget "band-pass1"))
-  (link (G-widget "band-pass1")(G-widget "meg"))
-  (link (G-widget "band-pass1")(G-widget "gra"))
-  (link (G-widget "gra")(G-widget "disp1"))
-  (link (G-widget "eeg")(G-widget "band-pass2"))
-  (link (G-widget "band-pass2")(G-widget "disp2"))
-  (GtOrganizePanel)
+(defun EEGlead3()
+  (let ((n)(w)(chname))
+    (dolist (w (list "EEG1" "EEG2" "fsub"))
+      (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
+    (require-widget :selector "EEG1")
+    (if (= (get-property (G-widget "EEG0") 19 :kind) 202)
+      (select-to (G-widget "EEG1")(EEG0 0 3 8 13 17 2 7 12 1 5 10 15 18 6 11 16 4 9 14))
+      (select-to (G-widget "EEG1")(EEG0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18)))
+    (select-to (G-widget "ECG")(EEG0 19))    
+    (select-to (G-widget "EOG")(EEG0 20))
+    (set-property (G-widget "ECG") 0 :kind 402)
+    (set-property (G-widget "EOG") 0 :kind 202)
+    (link (G-widget "EEG1")(G-widget "EEG-fil"))
+    (link (G-widget "ECG")(G-widget "ECG-fil"))
+    (link (G-widget "EOG")(G-widget "EOG-fil"))
+    (select-to (G-widget "sel")(EEG-fil 0 - 18)(ECG-fil 0)(EOG-fil 0))
+    (setq chname (list "Fp1-Oz" "F3-Oz" "C3-Oz" "P3-Oz" "O1-Oz" "F7-Oz" "T3-Oz" "T5-Oz"
+       "Fp2-Oz" "F4-Oz" "C4-Oz" "P4-Oz" "O2-Oz" "F8-Oz" "T4-Oz" "T6-Oz" 
+       "Fz-Oz" "Cz-Oz" "Pz-OZ" "ECG" "EOG"))
+    (dotimes (n (resource (G-widget "sel") :channels))
+      (set-property (G-widget "sel") n :name (nth n chname)))  
+    (setq w (G-widget "disp009"))   
+    (link (G-widget "sel")w)(GtOrganizePanel)
+    (set-resource w :point (read-from-string (XmTextGetString text-start)))
+    (set-resource w :length (read-from-string (XmTextGetString text-length)))
+    (change-eegscale)
+))
+
+(defun findmax001()
+  (let ((w0)(w1)(w2)(w3)(mtx)(r1)(r2)(k))
+    (setq w0 (G-widget "win000"))
+    (setq w1 (G-widget "000"))
+    (setq w2 (G-widget "mxwin"))
+    (setq w3 (G-widget "mxvcp"))
+    (link w1 w2)(link w2 w3)
+    (set-resource w2 :point (resource w1 :selection-start))
+    (set-resource w2 :end   (resource w1 :selection-length))
+    (setq mtx (get-data-matrix w3 0 (resource w3 :high-bound)))
+    (setq r1 (row 0 mtx)); max
+    (setq r2 (row 1 mtx)); ch
+    (setq r1 (map-matrix r1 #'abs))
+    (setq k (max-matrix r1)) 
+    (print k)
+))
+
+(defun findmax000()
+  (let ((LL nil)(val)(ch)(tm)(w0)(w1)(str))
+    (setq LL (findmax000core)) 
+    (if LL (progn
+      (setq w0 (G-widget "win000"))
+      (setq w1 (G-widget "000"))
+      (setq val (* (first LL) 1e+13));fT/cm
+      (setq ch (get-property w1 (second LL) :name))
+      (setq tm (third LL))
+      (setq tm (* tm (resource w1 :x-scale)))
+      (setq tm (+ tm (resource w1 :selection-start)))
+      (setq tm (+ tm (resource w0 :point)))
+      (setq str (format nil "~a    ~0,0f fT/cm" ch val))
+      (set-values label-gra000 :labelString (XmString str))
+      (setq str (format nil "fit ~0,3f" tm))
+      (set-values fit-button :labelString (XmString str)))(progn
+      (set-values label-gra000 :labelString (XmString "Gra 204ch"))
+      (set-values fit-button   :labelString (XmString "to xfit")) ))
+))
+
+(defun findmax000core()
+  (let ((ww)(w0)(mw)(mv)(t0)(t1)(span0)(mtx)(val)(n)(ch))
+    (setq ww (G-widget "win000") w0 (G-widget "000"))
+    (setq span (resource w0 :selection-length))
+    (if (<= span 0.0)(return nil)(progn
+      (setq mw (G-widget "mxwin")  mv (G-widget "mxvcp"))
+      (setq t0 (resource ww :point))
+      (setq t1 (resource w0 :selection-start))
+      (link ww mw)
+      (set-resource mw :point t1 :end span)
+      (set-resource mv :mode "abs-max")
+      (link mw mv)
+      (setq mtx (get-data-matrix mv 0 (resource mv :high-bound)))
+      (setq val (max-vector (row 0 mtx)))
+      (setq n (round (second val)))
+      (setq ch (vref (row 1 mtx) n))
+      (return (list (first val) (round ch) n))))
+))
+
+(defun fit000()
+  (let ((LL)(t0)(span)(ch)(tm)(w)(w1)(w2))
+    (setq w0 (G-widget "win000"))
+    (setq w1 (G-widget "000"))
+    (cond
+        ((= gramag 306)(setq w (G-widget "meg")))
+        ((= gramag 204)(setq w (G-widget "gra")))
+        ((= gramag 102)(setq w (G-widget "mag")))
+    )
+    (setq LL (findmax000core))
+    (if LL (progn    
+      (setq t0 (resource w1 :selection-start))
+      (setq span (resource w1 :selection-length))
+      (setq t0 (+ t0 (resource w0 :point)))
+      (setq ch (get-property w1 (second LL) :name))
+      (if (not meg306)(progn
+        (link w (G-widget "meg2"))
+        (set-near-coil ch)
+        (setq w (G-widget "meg2"))))
+      (xfit-transfer-data w (list t0 span))   
+      (if (> gramag 102)
+      (xfit-command (format nil "samplech ~a" (string-left-trim "MEG " ch))))
+      (setq tm (* (third LL) (resource w0 :x-scale)))
+      (xfit-command (format nil "fit ~a" (* (+ tm t0) 1000))))(progn
+      (setq t0   (resource w0 :point))
+      (setq span (resource w0 :end));start is 0
+      (xfit-transfer-data w (list t0 span))))
+))
+
+(defun fitcore(t0 span ch tmax)
+  (let ((w)(R))
+    (cond 
+      ((= gramag 306)(setq w (G-widget "meg")))
+      ((= gramag 204)(setq w (G-widget "gra")))
+      ((= gramag 102)(setq w (G-widget "mag")))
+    )
+    (unless meg306 (progn
+      (link w (G-widget "meg2"))
+      (set-near-coil ch)
+      (setq w (G-widget "meg2"))))
+    (xfit-transfer-data w (list t0 span))
+    (setq ch (string-left-trim "MEG" ch))
+    (xfit-command (format nil "samplech ~a" ch)) 
+    (xfit-command (format nil "fit ~a" (* tmax 1000)))
+))
+
+(defun get-date()
+  (let ((x)(xx)(str))
+    (setq x (get-universal-time))
+    (setq x (multiple-value-list (decode-universal-time x)))
+    (setq str (format nil "~a" (sixth x)))
+    (setq xx (fifth x))
+    (if (< xx 10)(setq str (format nil "~a0~a" str xx))
+                 (setq str (format nil "~a~a" str xx)))
+    (setq xx (fourth x))
+    (if (< xx 10)(setq str (format nil "~a0~a" str xx))
+                 (setq str (format nil "~a~a" str xx)))
+    (return str)
+))
+
+(defun get-datetime()
+  (let ((x)(xx)(str))
+    (setq x (get-universal-time))
+    (setq x (multiple-value-list (decode-universal-time x)))
+    (setq str (format nil "~a" (sixth x)))
+    (setq xx (fifth x))
+    (if (< xx 10)(setq str (format nil "~a0~a" str xx))
+                 (setq str (format nil "~a~a" str xx)))
+    (setq xx (fourth x))
+    (if (< xx 10)(setq str (format nil "~a0~a" str xx))
+                 (setq str (format nil "~a~a" str xx)))
+    (setq xx (third x))
+    (if (< xx 10)(setq str (format nil "~a0~a" str xx))
+                 (setq str (format nil "~a~a" str xx)))
+    (setq xx (second x))
+    (if (< xx 10)(setq str (format nil "~a0~a" str xx))
+                 (setq str (format nil "~a~a" str xx)))
+    (setq xx (first x))
+    (if (< xx 10)(setq str (format nil "~a0~a" str xx))
+                 (setq str (format nil "~a~a" str xx)))
+    (return str)
+))
+
+(defun get-ecgscale()(* (read-from-string (XmTextGetString text-ecg)) 1e-6))
+
+(defun get-eegscale()(* (read-from-string (XmTextGetString text-eeg)) 1e-6))
+
+(defun get-eogscale()(* (read-from-string (XmTextGetString text-eog)) 1e-6))
+
+(defun get-file-extension(filename)
+  " Return file-extension.
+    Syntax: (get-file-extension filename)"
+  (let ((n)(strm)(N)(pos nil)(R)(str  ""))
+    (setq strm (make-string-input-stream filename))
+    (setq N (length filename))
+    (dotimes (n N)
+      (setq R (read-char strm))
+      (if (eq R #\.)(setq pos n)))
+    (setq strm (make-string-input-stream filename))
+    (dotimes (n N)
+      (setq R (read-char strm))
+      (if (> n pos)(setq str (format nil "~a~a" str R))))
+    (return str) 
+))
+
+(defun get-grascale()(* (read-from-string (XmTextGetString text-gra)) 1e-13))
+
+(defun get-magscale()(* (read-from-string (XmTextGetString text-mag)) 1e-15))
+
+(defun get-matrix-sum(mtx)
+  (let ((n))
+    (setq n (array-dimensions mtx))
+    (when (> (first n)(second n))(setq mtx (transpose mtx)))
+    (setq n (array-dimension mtx 1))
+    (setq mtx (* mtx (ruler-vector 1 1 n)))
+    (when (matrixp mtx)(progn
+      (setq mtx (transpose mtx))
+      (setq n (array-dimension mtx 1))
+      (setq mtx (* mtx (ruler-vector 1 1 n)))))
+    (print mtx)
+))
+
+(defun get-memo()
+  (let ((memo))
+    (cond
+      ((= nmemo 1)(setq memo memo1))
+      ((= nmemo 2)(setq memo memo2))
+      ((= nmemo 3)(setq memo memo3))
+    )
+   (return memo)
+))
+
+(defun initialize()
+  (let ((n))
+    (define-parameters)
+    (defchpos)
+    (add-color)
+    (add-layout)
+    (add-megsel)
+    (chchsMEG);(require 'ssp)
+    (chchsMEGmax);...vecop
+    (chchsEEG)
+    (add-button *command-menu* "capture this widnow" '(screen-capture))
+    (add-button *command-menu* "noise level" '(calc-noise-level))
+    (add-button *command-menu* "PCA" '(create-pca))
+    ;(manage *control-panel*)
+    (setq nlayout 5)
+    (setq form000 (make-form *main-window* "form000"))
+    (setq form001 (make-form form000 "form001" :topAttachment XmATTACH_FORM
+      :leftAttachment  XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :rightAttachment XmATTACH_FORM :rightOffset 200 :bottomOffset 60))
+    (setq form002 (make-form form001 "form002"))
+    (setq frame001 (make-frame form000 "frame001"
+      :topAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :bottomOffset 60 :rightAttachment XmATTACH_FORM :width 200))
+    (manage frame001)
+    (setframe001)
+    (setq frame002 (make-frame form000 "frame002"
+      :leftAttachment  XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :rightAttachment XmATTACH_FORM :height 60 :shadowThickness 0))
+    (manage frame002)
+    (setframe002)
+    (create-initial-source)
+    (link (G-widget "mtx")(G-widget "buf"))
+    (layout4)
+    ;(GtOrganizePanel)
+    (dolist (n (list form002 form001 form000))(manage n))
+    (link (G-widget "gra")(G-widget "disp001"))
+    (link (G-widget "EEG-fil")(G-widget "disp009"))
+    (require 'xfit)
+    (xfit)
+    (XtDestroyWidget form-launch)
+    (require *hns-meg*);; this calls second form-launch
+    (XtDestroyWidget form-launch)
+    ;(xfit-command "origin head 0 0 40"); not recognized
+    ;(kill-xfit)
+    (change-grascale)
+    (change-eegscale)
+    (EEGlead1)
+    (link (G-widget "file")(G-widget "buf"))
+    (create-memos)
+    (add-button *display-menu* "show memo" 
+     '(if (XtIsManaged form-memo)(unmanage form-memo)(manage form-memo)))
+    (unmanage form-memo)
+))
+
+(defun layout-meg(nn)
+  (if (= nlayout 3)
+    (if (= nn 0)(layout2gra)(layout2mag))
+    (if (= nn 0)(layout1gra)(layout1mag)))
 )
 
-(defun TwoWin()
-  (XtDestroyWidget my-menu)
-  (CreateTwoWindows)
-  (CreateScroll "disp1")
-  (manage newform)
-  (settings)
-  (set_scale)
+(defun layout-routine();; delete disp00?
+  (let ((n)(disp))
+    (XtDestroyWidget form002)
+    (XtDestroyWidget form001)
+    (gc)
+    (setq form001 (make-form form000 "form001" 
+      :topAttachment    XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :leftAttachment   XmATTACH_FORM
+      :rightAttachment  XmATTACH_WIDGET :rightWidget frame001))
+    (setq form002 (make-form form001 "form002"
+      :topAttachment    XmATTACH_FORM :leftAttachment   XmATTACH_FORM
+      :rightAttachment  XmATTACH_FORM
+      :bottomAttachment XmATTACH_FORM :bottomOffset 20))
+    (manage form002)(manage form001)
+    (dotimes (n 10)
+      (setq disp (format nil "disp00~a" n))
+      (if (G-widget disp :quiet)(GtDeleteWidget (G-widget disp))))
+    (dotimes (n 8); for layout2
+      (setq disp (format nil "sel0~a" n))
+      (if (G-widget disp :quiet)(GtDeleteWidget (G-widget disp))))
+))
+
+(defun layout1(nn)
+  (let ((sp))
+    (layout-routine)
+    (setq sp (* 50 nn))
+    (make-meg8 0 100 sp (+ sp 50) form002 "disp001")
+    (make-plotter 0 100 (- 50 sp)(- 100 sp) form002 "disp009")
+    (if (get-property (G-widget "gra") 0 :kind)(layout1gra));; initial setting!
+))
+
+(defun layout1gra()
+  (let ((mtx)(x8)(w))
+    (link (G-widget "gra")(G-widget "disp001"))
+    (setq x8 (/ (ruler-vector -3.5 3.5 8) 4))
+    (setq mtx (mat-append 
+      (make-matrix 1 26 (vref x8 0))(make-matrix 1 26 (vref x8 1))
+      (make-matrix 1 26 (vref x8 2))(make-matrix 1 26 (vref x8 3))
+      (make-matrix 1 24 (vref x8 4))(make-matrix 1 24 (vref x8 5))
+      (make-matrix 1 26 (vref x8 6))(make-matrix 1 26 (vref x8 7))))
+    (setq w (G-widget "disp001"))
+    (set-resource w :offsets (transpose mtx) :superpose t :ch-label-space 0)
+    (change-grascale)
+))
+
+(defun layout1mag()
+  (let ((mtx)(x8)(w))
+    (link (G-widget "mag")(G-widget "disp001"))
+    (setq x8 (/ (ruler-vector -3.5 3.5 8) 4))
+    (setq mtx (mat-append 
+      (make-matrix 1 13 (vref x8 0))(make-matrix 1 13 (vref x8 1))
+      (make-matrix 1 13 (vref x8 2))(make-matrix 1 13 (vref x8 3))
+      (make-matrix 1 12 (vref x8 4))(make-matrix 1 12 (vref x8 5))
+      (make-matrix 1 13 (vref x8 6))(make-matrix 1 13 (vref x8 7))))
+    (setq w (G-widget "disp001"))
+    (set-resource w :offsets (transpose mtx))
+    (change-magscale)
+))
+
+(defun layout2(); gra 26-26-26-26-24-24-26-26 mag 13-13-13-13-12-12-13-13
+  (let ((n)(sel0n))
+    (layout-routine) 
+    (set-values form002 :topOffset 20 :leftOffset 20)
+    (setq label1 (make-label form001 "label1" :labelString (XmString "temporal")
+      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_POSITION :leftPosition 10))
+    (setq label2 (make-label form001 "label2" :labelString (XmString "parietal")
+      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_POSITION :leftPosition 30 ))
+    (setq label3 (make-label form001 "label3" :labelString (XmString "occipital")
+      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_POSITION :leftPosition 50))
+    (setq label4 (make-label form001 "label4" :labelString (XmString "frontal")
+      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_POSITION :leftPosition 70 ))
+    (setq label5 (make-label form001 "label5" :labelString (XmString "L")
+      :topAttachment XmATTACH_POSITION :topPosition 25 :leftAttachment XmATTACH_FORM))
+    (setq label6 (make-label form001 "label6" :labelString (XmString "R")
+      :topAttachment XmATTACH_POSITION :topPosition 75 :leftAttachment XmATTACH_FORM))
+    (dolist (n (list label1 label2 label3 label4 label5 label6))(manage n))
+    (make-plotter  0  50  0  20 form002 "disp001")
+    (make-plotter 50 100  0  20 form002 "disp002")
+    (make-plotter  0  50 20  40 form002 "disp003")
+    (make-plotter 50 100 20  40 form002 "disp004")
+    (make-plotter  0  50 40  60 form002 "disp005")
+    (make-plotter 50 100 40  60 form002 "disp006")
+    (make-plotter  0  50 60  80 form002 "disp007")
+    (make-plotter 50 100 60  80 form002 "disp008")
+    (make-plotter  0 100 80 100 form002 "disp009") 
+    (dotimes (n 8)
+      (setq sel0n (format nil "sel0~a" (+ n 1)))
+      (if (not (G-widget sel0n :quiet))(require-widget :selector sel0n)))
+    (if (get-property (G-widget "gra") 0 :kind)(layout2gra))
+))
+
+(defun layout2end()
+  (let ((n)(disp)(t0)(span))
+    (setq t0   (read-from-string (XmTextGetString text-start)))
+    (setq span (read-from-string (XmTextGetString text-length)))
+    (dotimes (n 8)
+      (setq disp (G-widget (format nil "disp00~a" (+ n 1))))
+      (set-resource disp :ch-label-space 80 :point t0 :length span)
+      (link (G-widget (format nil "sel0~a" (+ n 1))) disp))
+    (set-resource (G-widget "disp009") :ch-label-space 80 :point t0 :length span)
+    (link (G-widget "sel")(G-widget "disp009"))
+))
+
+(defun layout2gra()
+  (let ((meg (G-widget "meg")))
+    (select-to (G-widget "sel01")(meg   0 -  25))
+    (select-to (G-widget "sel02")(meg  25 -  51))
+    (select-to (G-widget "sel03")(meg  52 -  77))
+    (select-to (G-widget "sel04")(meg  78 - 103))
+    (select-to (G-widget "sel05")(meg 104 - 127))
+    (select-to (G-widget "sel06")(meg 128 - 151))
+    (select-to (G-widget "sel07")(meg 152 - 177))
+    (select-to (G-widget "sel08")(meg 178 - 203))
+    (layout2end)
+    (change-grascale)
+))
+
+(defun layout2mag();203 +13-13-13-13-12-12-13-13
+  (let ((meg (G-widget "meg")))
+    (select-to (G-widget "sel01")(meg 204 - 216))
+    (select-to (G-widget "sel02")(meg 217 - 229))
+    (select-to (G-widget "sel03")(meg 230 - 242))
+    (select-to (G-widget "sel04")(meg 243 - 255))
+    (select-to (G-widget "sel05")(meg 256 - 267))
+    (select-to (G-widget "sel06")(meg 268 - 279))
+    (select-to (G-widget "sel07")(meg 280 - 292))
+    (select-to (G-widget "sel08")(meg 293 - 305))
+    (layout2end)
+    (change-magscale)
+))
+
+(defun layout3()
+  (let ((n)(pane)(form1)(form2)(form3)(x))
+    (layout-routine)
+    (setq pane (XmCreatePanedWindow form002 "pane" (X-arglist) 0))
+    (set-values pane :separatorOn 0 :sasIndent -1 :resize 1
+      :topAttachment XmATTACH_FORM  :bottomAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_FORM :rightAttachment  XmATTACH_FORM
+      :paneMinimum 20); :paneMinimum is invalid!
+    (manage pane);; this must be here!
+    (setq form1 (make-form pane "form1"))
+    (setq form2 (make-form pane "form2"))
+    (setq form3 (make-form pane "form3"))
+    ;;disp001 8 stack megs
+    (make-meg8 0 100 0 100 form1 "disp001")
+    ;;disp000 selected meg
+    (make-plotter 0 100 0 100 form2 "disp000"); selected MEG
+    (make-plotter 0 100 0 100 form3 "disp009"); EEG etc
+    (link (G-widget "gra")(G-widget "disp001"))
+    (link (G-widget "meg")(G-widget "disp000"))
+    (link (G-widget "sel")(G-widget "disp009"))
+    (if (get-property (G-widget "gra") 0 :kind)(progn
+      (layout1gra)
+      (change-megsel "gra-L-temporal")))
+   (dolist (n (list form1 form2 form3))(manage n))
+   ;(set-values form2 :height 100)
+   ;(set-values form3 :height 100)
+))
+
+(defun layout4()
+  (let ((n)))
+    (layout-routine)
+    (make-plotter 0 100  0  33 form002 "disp009")
+    (make-meg8    0 100 33  67 form002 "disp001")
+    (make-plotter 0 100 67 100 form002 "disp000")
+    (if (get-property (G-widget "gra") 0 :kind)(progn
+      (layout1gra)
+      (change-megsel "gra-L-temporal")))
+))
+
+(defun layout5()
+  (let ((n)(pane)(form1)(form2)(x))
+    (layout-routine)
+    (make-meg8 0 100 0 50 form002 "disp001")
+    (setq pane (XmCreatePanedWindow form002 "pane" (X-arglist) 0))
+    (set-values pane :separatorOn 0 :sasIndent -1 :resize 1
+      :topAttachment XmATTACH_FORM  :bottomAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_POSITION :leftPosition 50
+      :rightAttachment  XmATTACH_FORM)
+    (manage pane)
+    (setq form1 (make-form pane "form1"))
+    (setq form2 (make-form pane "form2"))       
+    (make-plotter 0 100 0 100 form1 "disp000"); selected MEG
+    (make-plotter 0 100 0 100 form2 "disp009"); EEG etc 
+    (manage form1)
+    (manage form2)
+    (if (get-property (G-widget "gra") 0 :kind)(progn
+      (layout1gra)
+      (change-megsel "gra-L-temporal")))
+))
+
+(defun layout6()
+  (let ((n)(pane)(form1)(form2)(x))
+    (layout-routine)
+    (make-plotter 0 100 0 50 form002 "disp000")
+    (setq pane (XmCreatePanedWindow form002 "pane" (X-arglist) 0))
+    (set-values pane :separatorOn 0 :sasIndent -1 :resize 1
+      :topAttachment XmATTACH_FORM  :bottomAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_POSITION :leftPosition 50
+      :rightAttachment  XmATTACH_FORM)
+    (manage pane)
+    (setq form1 (make-form pane "form1"))
+    (setq form2 (make-form pane "form2"))       
+    (make-meg8    0 100 0 100 form1 "disp001")
+    (make-plotter 0 100 0 100 form2 "disp009"); EEG etc 
+    (manage form1)
+    (manage form2)
+    (if (get-property (G-widget "gra") 0 :kind)(progn
+      (layout1gra)
+      (change-megsel "gra-L-temporal")))
+))
+
+
+(defun make-chname()
+  (let ((x)(y)(ch nil))
+    (dotimes (x 26)
+      (dotimes (y 4)
+        (setq n (+ (* x 10) y 11))
+        (setq ch (append ch (list n)))))
+    (setq ch (delete 83 ch))
+    (setq ch (delete 84 ch))
+    (return ch) 
+))
+
+(defun make-frame001(form)
+  (let ((frame))
+    (setq frame (make-frame form "frame001"
+      :topAttachment    XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :rightAttachment  XmATTACH_FORM 
+      :width 200))
+    (return frame)
+))
+
+(defun make-meg8(top bottom left right form name)
+  (let ((dispw)(x8)(x)(label)(str)(n)(w))
+    (setq x8 (/ (ruler-vector -3.5 3.5 8) 4))
+    (setq dispw (make-plotter top bottom left right  form name))
+    (set-values dispw :leftOffset 80 :ch-label-space 0); :superpose t)
+    (setq label (list "L-temporal"  "R-temporal"  "L-parietal" "R-parietal"
+                      "L-occipital" "R-occipital" "L-frontal"  "R-frontal"))
+    (dotimes (n 8)
+      (setq x (vref x8 n))
+      (setq x (round (+ (* x 45) 46)));;thumb's rule
+      (setq str (nth n label))
+      ;(setq w (make-label form str :labelString (XmString str)
+      (setq w (make-button form str :labelString (XmString str)
+        :topAttachment  XmATTACH_POSITION :topPosition x
+        :leftAttachment XmATTACH_POSITION :leftPosition left
+        :leftOffset 5 :shadowThickness 0))
+        ; :background (rgb 240 240 240)))
+      (cond
+        ((= n 0)(set-lisp-callback w "activateCallback" '(change-megsel2 0)))
+        ((= n 1)(set-lisp-callback w "activateCallback" '(change-megsel2 1)))
+        ((= n 2)(set-lisp-callback w "activateCallback" '(change-megsel2 2)))
+        ((= n 3)(set-lisp-callback w "activateCallback" '(change-megsel2 3)))
+        ((= n 4)(set-lisp-callback w "activateCallback" '(change-megsel2 4)))
+        ((= n 5)(set-lisp-callback w "activateCallback" '(change-megsel2 5)))
+        ((= n 6)(set-lisp-callback w "activateCallback" '(change-megsel2 6)))
+        ((= n 7)(set-lisp-callback w "activateCallback" '(change-megsel2 7)))
+      )
+      (manage w))
+))
+
+(defun make-plotter(top bottom left right form name)
+  (let ((disp)(dispw))
+    (if (G-widget name :quiet)(GtDestroyWidget (G-widget name)))
+    (setq disp (GtMakeObject 'plotter :name name :display-parent form
+      :scroll-parent form001 :no-controls t))
+    (put disp :display-form form)
+    (GtPopupEditor disp)
+    (setq dispw (resource disp :display-widget))
+    (set-values dispw :resize 1 
+      :topAttachment    XmATTACH_POSITION :topPosition    top
+      :bottomAttachment XmATTACH_POSITION :bottomPosition bottom
+      :leftAttachment   XmATTACH_POSITION :leftPosition   left
+      :rightAttachment  XmATTACH_POSITION :rightPosition  right)
+    (set-resource disp :scroll-visible 0 :x-unit "s" :length 10
+      :point 0 :ch-label-space 80)
+    (set-values (resource disp :scroll-widget)
+      :topAttachment    XmATTACH_WIDGET :topWidget    form002
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget form001
+      :leftAttachment   XmATTACH_WIDGET :leftWidget   form001
+      :rightAttachment  XmATTACH_WIDGET :rightWidget  form001)
+    (return dispw)
+))
+
+(defun make-random-matrix(x y)
+  (let ((R))
+    (setq R (/ (random-matrix x y)(pow 2 31)))
+    (return R)
+))
+
+(defun max-gra(t0 span)
+  (let ((w)(xscale)(T0)(SPAN)(mtx)(mx)(ch)(tmax)(R))
+    (setq w (G-widget "gra"))
+    (setq xscale (resource w :x-scale))
+    (setq T0   (round (/ t0 xscale)))
+    (setq SPAN (round (/ span xscale)))
+    (setq mtx (get-data-matrix w T0 SPAN))
+    (setq mx (max-matrix mtx))
+    (setq ch (get-property w (second mx) :name))
+    (setq tmax (+ (* (third mx) xscale) t0))
+    (setq R (list (first mx) ch tmax))
+    (return R)
+))
+
+(defun max-gra-list(t0 span)
+  (let ((w)(xscale)(T0)(SPAN)(mtx)(mx)(tmax)(R))
+    (setq w (G-widget "gra"))
+    (setq xscale (resource w :x-scale))
+    (setq T0   (round (/ t0 xscale)))
+    ;(setq T0 (+ T0 (resource w :low-bound)))
+    (setq SPAN (round (/ span xscale)))
+    (setq mtx (get-data-matrix w T0 SPAN))
+    (setq mx (max-matrix mtx))
+    (setq ch (get-property w (second mx) :name))
+    (setq tmax (+ (* (third mx) xscale) t0))
+    (setq R (list t0 span ch tmax (* (first mx) 1e+13)))
+    (return R)
+))
+
+(defun max-matrix(mtx)
+  (let ((Nch)(Ntm)(val)(val1)(tmvec)(vec)(chvec)(ch)(tm)(n))
+    (setq Nch (array-dimension mtx 0))
+    (setq Ntm (array-dimension mtx 1))
+    (setq tmvec (ruler-vector 0 (- Ntm 1) Ntm))
+    (setq chvec (ruler-vector 0 (- Nch 1) Nch))
+    (setq chvec (transpose chvec))
+    (setq mtx (map-matrix mtx #'fabs))
+    (setq val (second (matrix-extent mtx)))
+    (setq mtx (/ mtx val))
+    (setq val1 (second (matrix-extent mtx)))
+    (setq mtx (/ mtx val1))
+    (setq mtx (map-matrix mtx #'floor));; Nch x Ntm 0.0 or 1.0
+    (setq vec (* mtx tmvec))
+    (setq tm (round (second (matrix-extent vec))))
+    (setq vec (column tm mtx))
+    (setq ch (round (* chvec vec)))
+    (return (list val ch tm))
+))
+
+(defun maxfun(x)
+  (setq sumfunsum (max sumfunsum (abs x)))
 )
 
-(progn
-  (setq my-menu (add-button *user-menu* "execute" '(TwoWin)))
+(defun max-vector(vec)
+  (let ((N)(val)(val1)(n))
+    (setq N (array-dimension vec 0))
+    (if (= N 1)(setq N (array-dimension vec 1))
+      (setq vec (transpose vec)))
+    (setq vec (map-matrix vec #'abs))
+    (setq val (second (matrix-extent vec)))
+    (setq vec (/ vec val))
+    (setq val1 (second(matrix-extent vec)))
+    (setq vec (/ vec val1))
+    (setq vec (map-matrix vec #'floor))
+    (setq vec (map-matrix vec #'round))
+    (setq k (* vec (ruler-vector 1 1 N)))
+    (if (= k 1)
+      (setq val1 (- (* vec (ruler-vector 1 N N))1))
+      (progn (catch 'exit
+        (dotimes (n N)
+          (if (= (vref vec n) 1)
+            (throw 'exit (setq val1 n)))))))
+    (return (list val (round val1)))
+))
+
+(defun memo-check()
+  (let ((n)(N)(memo)(str)(strm)(char))
+    (setq memo (get-memo))
+    (setq str (XmTextGetString memo))
+    (setq strm (make-string-input-stream str))
+    (setq N (+ 1 (length str)))
+    (dotimes (n N)
+      (setq char (read-char strm))
+      (print (char-code char)))
+))
+
+(defun memo-clear()
+  (let ((memo))
+    (setq memo (get-memo))
+    (XmTextSetString memo "")
+))
+
+(defun memo-clear-all()
+  (XmTextSetString memo3 "")
+  (XmTextSetString memo2 "")
+  (XmTextSetString memo1 "")
 )
+
+(defun memo-coordinate(&optional (x 0)(y 0)(z 40))
+  (xfit-command (format nil "origin head ~0,2f ~0,2f ~0,2f" x y z))
+)
+
+(defun memo-copy(n)
+  (let ((memo)(str))
+    (setq memo (get-memo))
+    (setq str (XmTextGetString memo))
+    (cond
+      ((= n 1)(XmTextSetString memo1 str))
+      ((= n 2)(XmTextSetString memo2 str))
+      ((= n 3)(XmTextSetString memo3 str))
+    )
+))
+
+(defun memo-dipclear()
+  (xfit-command "dipclear");selected dipole is cleared
+  (xfit-command "dipclear");all dipoles are cleared
+)
+
+(defun memo-dipload()
+  (let ((folder)(loadname)(filename)(ext))
+    (setq folder (resource (G-widget "file") :directory))
+    (setq folder (str-append (filename-directory folder) "*.bdip"))
+    (setq loadname (resource (G-widget "file") :filename))
+    (setq loadname (format nil "~a.bdip" (filename-base loadname)))
+    (setq filename (ask-filename "select BDIP file" :template folder :default loadname))
+    (when (file-exists-p filename)
+      (xfit-command (format nil "dipload ~a" filename)))      
+))
+
+(defun memo-dipsave()
+  (let ((folder)(savename)(filename)(ext))
+    (setq folder (resource (G-widget "file") :directory))
+    (setq folder (str-append (filename-directory folder) "*.bdip"))
+    (setq savename (resource (G-widget "file") :filename))
+    (setq savename (format nil "~a.bdip" (filename-base savename)))
+    (setq filename (ask-filename "Give new filename" :new t
+                      :template folder :default savename :if-exists :ask))    
+    (when filename (progn
+      (setq ext (filename-extension filename))
+      (unless (string-equal ext "bdip")
+        (setq filename (format nil "~a~a.bdip" (filename-directory filename)(filename-base filename))))
+      (xfit-command (format nil "dipsave ~a" filename))))
+))
+
+(defun memo-dipselect()
+  (let ((gof)(folder)(filename)(str)(fid)(bytes))
+    (setq gof (read-from-string (XmTextGetString text-gof)))
+    (setq folder (filename-directory (resource (G-widget "file") :filename)))
+    (setq filename (format nil "~agraph000.bdip" folder))
+    (xfit-command (format nil "dipsave ~a" filename))
+    (setq folder (string-right-trim "hns_meg5" *hns-meg*))
+    (setq str (format nil "~a/delete_lowgof ~a ~a" folder filename gof))
+    (system str)
+    (system (format nil "stat -c~As ~a > byte000.txt" "%" filename))
+    ;(system (format nil "ls -lh ~a | awk '{print $5'} > byte000.txt" filename))
+    (setq fid (open "byte000.txt" :direction :input))
+    (setq bytes (read fid))
+    (close fid)
+    (if (= bytes 0)(info (format nil "No dipole with GOF >=~0,0f" gof))
+      (progn
+        (info (format nil "~0,0f dipoles are selected" (/ bytes 196)))
+        (xfit-command "dipclear");selected dipole
+        (xfit-command "dipclear");all dipoles
+        (xfit-command (format nil "dipload ~a" filename))))
+    (system "rm byte000.txt")
+    (system (format nil "rm ~a" filename))
+))
+
+(defun memo-dipselect-png()
+  (let ((fid)(n)(L)(files)(folder)(textfile)(dipfile)(str)(cmd))
+    (system "ls a*.png  > ls.txt")
+    (setq fid (open "ls.txt" :direction :input))
+    (catch 'exit
+      (dotimes (n 500);max 500!
+        (setq L (read-line fid))
+        (unless L (throw 'exit t))
+        (setq L (string-trim "a.png" L))
+        (setq files (append files (list(read-from-string L))))))
+    (close fid)
+    (system "rm ls.txt")    
+    (when (> (length files))(progn
+      (setq folder (filename-directory (resource (G-widget "file") :filename)))   
+      (setq textfile (str-append folder "ls.txt"))
+      (setq fid (open textfile :direction :output :if-exists :supersede))
+      (dolist (n files)
+        (format fid "~f " n));
+      (close fid)
+      (setq dipfile (str-append folder "graphpng.bdip"))
+      (xfit-command (format nil "dipsave ~a" dipfile))
+      (setq cmd (str-append (filename-directory *hns-meg*) "select_time"))
+      (system (format nil "~a ~a ~a" cmd dipfile textfile))
+      (xfit-command (format nil "dipload ~a" dipfile))
+      (system (format nil "rm ~a" textfile))
+      (memo-dipclear)
+      (xfit-command (format nil "dipload ~a" dipfile))
+      (system (format nil "rm ~a" dipfile))))
+))
+
+(defun memo-extractepoch()
+  (let ((folder)(str)(filename1)(filename2)(fid)(L)(LL nil)(n)(N)(memo)(tt))
+    (setq folder (filename-directory (resource (G-widget "file") :filename)))
+    (setq filename1 (str-append folder "graph012.bdip"))
+    (setq filename2 (str-append folder "graph012.txt"))
+    (xfit-command (format nil "dipsave ~a" filename1))
+    (setq str (format nil "~a/read_bdip ~a ~a" (filename-directory *hns-meg*) filename1 filename2))
+    (system str)
+    (system (format nil "rm ~a" filename1))
+    (setq str "")
+    (setq fid (open filename2 :direction :input))
+    (catch 'exit
+      (dotimes (n 100000)
+        (setq L (read-line-as-list fid))
+        (if L (setq LL (append LL (list (first L))))(throw 'exit t))))
+    (close fid)
+    (system (format nil "rm ~a" filename2))
+    (setq str "")  
+    (setq memo (get-memo))
+    (setq fid (make-string-input-stream (XmTextGetString memo)))
+    (setq N (memo-getline))
+    (setq N (+ (second N) 1))
+    (dotimes (n N)
+      (setq L (read-line-as-list fid))
+      (when (> (length L) 4)(progn
+        (setq tt (* (fourth L) 1000)) ; unit is msec
+        (when (member tt LL)
+          (setq str (format nil "~a~a~%" str (memo-line L)))))))
+    (XmTextSetString memo str)        
+))
+
+(defun memo-fit()
+  (let ((R)(sns)))
+    (setq R (memo-readline))
+    (when (> (length R) 4)(progn
+      (setq sns (format nil "~a" (third R)))
+      (unless (string-equal sns (string-trim "MEG" sns))
+        (fitcore (first R)(second R) sns (fourth R))))) 
+))        
+
+(defun memo-fitfit()
+  (let ((R)(L)(n)(N)(strm)(sns))
+    (setq memo (get-memo))
+    (setq strm (make-string-input-stream(XmTextGetString memo)))
+    (setq R (memo-getline))
+    (setq N (+ (second R) 1))
+    (dotimes (n N)
+      (setq R (read-line-as-list strm))
+      (when (> (length R) 4)(progn
+        (setq sns (format nil "~a" (third R)))
+        (unless (string-equal sns (string-trim "MEG" sns))
+          (fitcore (first R)(second R) sns (fourth R))))))
+))
+
+(defun memo-fullview();unused
+   (let ((R)(sns))
+     (setq R (memo-readline))
+     (when (> (length R) 4)(progn
+       (setq sns (format nil "~a" (third R)))
+       (unless (string-equal sns (string-trim "MEG" sns))(progn
+         (memo-goto)
+         (fit000)
+         (xfit-command "fullview")
+     )))))
+))
+
+(defun memo-getline()
+  (let ((pos)(memo)(str)(num 0)(fin 0)(n)(strm)(char))
+    (setq memo (get-memo))
+    (setq pos (XmTextGetInsertionPosition memo))
+    (setq str (XmTextGetString memo))
+    (setq strm (make-string-input-stream str))
+    (dotimes (n (length str))
+      (setq char (read-char strm))
+      (if (or (equal char #\Linefeed)(equal char #\Eof))(progn
+       (if (< n pos)(setq num (+ num 1)))
+       (setq fin (+ fin 1)))))
+    (return (list num fin))
+))
+
+(defun memo-getline2()
+  (let ((memo)(str)(strm)(R)(n)(N)(L))
+    (setq memo (get-memo))
+    (setq str (XmTextGetString memo))
+    (setq strm (make-string-input-stream str))
+    (setq N (memo-getline))
+    (setq N (+ (second N) 1))
+    (dotimes (n N)
+      (setq L (read-line-as-list strm))
+      (setq R (list (stream-index strm)(stream-column strm)(stream-line strm)))
+      (print R));; shows (0 0 0)  valid in output-stream and print?
+))
+
+(defun memo-goto()
+  (let ((R)(sns)(t0)(t1)(span)(span1)(w))
+    (setq R (memo-readline))
+    (when (> (length R) 4)(progn
+      (setq sns (format nil "~a" (third R)))
+      (unless (string-equal sns (string-trim "MEG" sns))(progn
+        (if (> nlayout 3)(change-megsel (which-gra8 sns)))
+        (setq t1 (first R) span1 (second R))
+        (setq w (G-widget "disp009"))
+        (setq span (resource w :length))
+        (setq t0 (- (+ t1 (/ span1 2)) (/ span 2)))
+        (set-resource w :point t0 :selection-start t1 :selection-length span1)
+        (sync-move-hook w)
+        (sync-select-hook w)))))
+))
+
+(defun memo-insert(str)
+  (let ((memo)(pos)(strm0)(strm1)(char)(ck)(str0)(char)(n)(N))
+    (setq memo (get-memo))
+    (setq pos (XmTextGetInsertionPosition memo))
+    (setq str0 (XmTextGetString memo))
+    (setq N (+ (length str0) 1))
+    (setq strm0 (make-string-input-stream str0))
+    (setq strm1 (make-string-output-stream))
+    (setq ck -2)
+    (dotimes (n N)
+      (setq char (read-char strm0))
+      (if (= n pos)(setq ck -1))
+      (if (= ck -1)
+        (if (or (eq char #\Linefeed)(eq char #\Eof))(progn
+          (write-string (format nil "~a" str) strm1)
+          (setq ck n))))
+      (if (not (eq char #\Eof))
+        (write-string (format nil "~a" char) strm1)))
+    (setq pos (+ ck (length str)))
+    (XmTextSetString memo (get-output-stream-string strm1))
+    (XmTextSetInsertionPosition memo pos)
+    ;(memo-check)
+))
+
+(defun memo-line(L)
+  (let ((memo)(str)(k)(n))
+    (setq memo (get-memo))
+    (setq str (format nil "~9,3f" (first L)))
+    (setq str (format nil "~a   ~6,3f" str (second L)))
+    (setq str (format nil "~a   ~a" str (third L)))
+    (setq str (format nil "~a  ~8,3f" str (fourth L)))
+    (setq str (format nil "~a    ~4,0f" str (fifth L)))
+    (dotimes (n (length L))
+      (when (> n 4)
+        (setq str (format nil "~a ~a" str (nth n L)))))
+    (return str)
+))
+
+(defun memo-load()
+  (let ((folder)(filename)(loadname)(memo)(fid)(strm)(char)(n)(str ""))
+    (setq filename (resource (G-widget "file") :filename))
+    (setq folder (str-append (filename-directory filename) "*-wave.txt"))
+    (setq loadname (str-append (filename-base filename) "-wave.txt"))
+    (setq filename (ask-filename "select *-wave.txt" 
+      :template folder :default loadname))
+    (when (file-exists-p filename)(progn
+      (setq strm (make-string-output-stream))
+      (setq fid (open filename :direction :input))
+      (catch 'exit
+        (dotimes (n 100000)
+          (setq char (read-char fid))
+          (setq str (format nil "~a~a" str char))
+          (when (equal char #\Eof)(throw 'exit t))))
+      (close fid)
+      (setq memo (get-memo))
+      (XmTextSetString memo str)))
+))
+
+(defun memo-note()
+  (let ((mxt)(t0)(span)(T0)(Span)(w)(w1)(xscale)(mx)(str)(ch)(tmax))
+    (setq w (G-widget "000"))
+    (setq span (resource w :selection-length))
+    (if (> span 0.0)(progn
+      (setq t0   (resource w :selection-start))
+      (setq span (resource w :selection-length))
+      (setq t0 (+ t0 (resource (G-widget "win000") :point))))(progn
+      (setq w (G-widget "disp001"))
+      (setq t0   (resource w :selection-start))
+      (setq span (resource w :selection-length))))
+    (when (> span 0)(progn
+      (setq xscale (resource w :x-scale))
+      (setq T0 (round (/ t0 xscale)))
+      (setq Span (round (/ span xscale)))
+      (setq mtx (get-data-matrix (G-widget "gra") T0 Span))
+      (setq mx (max-matrix mtx))
+      (setq ch (get-property (G-widget "gra") (second mx) :name))
+      (setq tmax (+ t0 (* (third mx) xscale)))
+      (setq mx (* (first mx) 1e+13))
+      (setq str (memo-line (list t0 span ch tmax mx)))
+      (memo-insert (format nil "~%~a" str))))
+))
+
+(defun memo-paste(str);; slow!
+  (let ((memo)(str0 nil)(str1 nil)(st)(line)(pos1)(pos2)(n)(strm))
+    (setq memo (get-memo))
+    (setq line (memo-getline))
+    (setq pos1 (first line) pos2 (second line))
+    (setq pos2 (+ pos2 1))
+    (setq strm (make-string-input-stream (XmTextGetString memo)))
+    (dotimes (n pos2)
+      (setq st (read-line strm))
+      (if st 
+        (if (> n pos1)
+          (if str1 (setq str1 (format nil "~a~%~a" str1 st))
+                   (setq str1 (format nil "~a" st)))
+          (if str0 (setq str0 (format nil "~a~%~a" str0 st))
+                   (setq str0 (format nil "~a" st))))))
+    (if (not str0)(setq str0 ""))
+    (if (not str1)(setq str1 ""))
+    (setq str (format nil "~a~%~a" str0 str))
+    (setq N (length str))
+    (setq str (format nil "~a~%~a" str str1))
+    (XmTextSetString memo str)
+    (XmTextSetInsertionPosition memo N)
+))
+
+(defun memo-peak2selection(&optional(nn 0))
+  (let ((memo)(n)(N)(L)(LL nil)(R)(w)(xscale)(strm)(tmax)(tmin)(tnow)(mtx)(K))
+    (setq memo (get-memo))
+    (setq R (memo-getline))
+    (setq N (+ (second R) 1))
+    (setq strm (make-string-input-stream (XmTextGetString memo)))
+    (setq w (G-widget "buf"))
+    (setq xscale (resource w :x-scale))
+    (setq tmin (* (resource w :low-bound) xscale))
+    (setq tmax (* (resource w :high-bound) xscale))
+    (if (= nn 1)(setq nn tmin))
+    (dotimes (n N)
+      (setq L (read-line-as-list strm))
+      (when (= (length L) 1)
+        (when (numberp (first L))(progn
+          (setq tnow (+ (first L) nn))
+          (when (and (>= tnow tmin)(<= tnow tmax))(progn
+            (setq R (max-gra tnow xscale))
+            (setq K (list (- tnow 0.25) 0.5 (second R) tnow (* (first R) 1e+13)))
+            (setq LL (append LL (list K)))
+          ))))))
+    (memo-clear)
+    (setq N (length LL))
+    (dotimes (n N)
+      (memo-insert (format nil "~a~%" (memo-line (nth n LL)))))
+    ;(memo-fitfit)
+))
+
+(defun memo-readbdip()
+  (let ((folder)(str)(filename1)(filename2))
+    (setq folder (resource(G-widget "file") :directory))
+    (setq folder (string-right-trim "*" folder)) 
+    (setq filename1 (format nil "~agraph123.bdip" folder))
+    (setq filename2 (format nil "~agraph123.txt" folder))
+    (xfit-command (format nil "dipsave ~a" filename1))
+    (setq folder (string-right-trim "hns_meg5" *hns-meg*))
+    (setq str (format nil "~a/read_bdip ~a ~a" folder filename1 filename2))
+    (system str)
+    (system (format nil "rm ~a" filename1))
+    (memo-readbdip2 filename2)
+))
+
+(defun memo-readbdip2(filename)
+  (let ((fid)(str)(str0))
+    (setq str "time/ms    x/m     y/m     z/m    Qx/m    Qy/m    Qz/m   gof   CV   khi2")
+    (setq str (format nil "~a~%" str))  
+    (setq fid (open filename :direction :input))
+    (catch 'exit 
+      (dotimes (n 100000)
+        (setq char (read-char fid))
+        (setq str (format nil "~a~a" str char))
+        (when (equal char #\Eof)(throw 'exit t))))
+    (close fid)
+    (setq memo (get-memo))
+    (setq str0 (XmTextGetString memo))
+    (if (> (length str0) 0)(setq str (format nil "~a~%~a" str0 str)))
+    (XmTextSetString memo str)
+    (system (format nil "rm ~a" filename))
+))
+
+(defun memo-readline()
+  (let ((memo)(N)(n)(strm)(R)(L)(LL nil))
+    (setq memo (get-memo))
+    (setq strm (make-string-input-stream (XmTextGetString memo)))
+    (setq R (memo-getline))
+    (setq N (first R))
+    (catch 'exit
+      (dotimes (n (+ (second R) 1))
+        (setq L (read-line-as-list strm))
+        (when (= n N)(throw 'exit
+          (progn
+            (setq LL L))))))
+    (return LL)
+))
+
+(defun memo-save()
+  (let ((memo)(folder)(filename)(savename)(n)(fid)(str))
+    (setq filename (resource (G-widget "file") :filename))
+    (setq folder (str-append (filename-directory filename) "*-wave.txt"))
+    (setq filename (str-append (filename-base filename) "-wave.txt"))
+    (setq filename (ask-filename "Give new filename *-wave.txt" :new t 
+      :new t :template folder :default filename :if-exists :ask))
+    (when filename (progn
+      (setq n (- (length filename)(length (string-right-trim "wave.txt" filename))))
+      (when (= n 8)(progn
+        (setq memo (get-memo))
+        (setq str (XmTextGetString memo))
+        (setq fid (open filename :direction :output :if-exists :supersede))
+        (princ str fid)
+        (close fid)
+        (print (format nil "~a has been saved." filename))))))
+))
+
+(defun memo-save-png()
+  (let ((memo)(strm)(R)(N)(n)(sns)(t0)(span)(t1)(span1)(w)(id)(str)(col))
+    (setq memo (get-memo))
+    (setq strm (make-string-input-stream (XmTextGetString memo)))
+    (setq R (memo-getline))
+    (setq N (+ (second R) 1))
+    (setq w (G-widget "disp009"))
+    (setq span (resource w :length))
+    (setq id (window-id (XtWindow form000)))
+    (when (G-widget "disp009" :quiet)(setq col "white")
+      (setq col (resource (G-widget "disp009") :default-color)))
+    (change-color 2)
+    (unmanage form-memo)
+    
+    (system "rm a*.png")
+    (system "xset b off")
+    (dotimes (n N)
+      (setq R (read-line-as-list strm))
+      (when (> (length R) 4)(progn
+        (setq sns (format nil "~a" (third R)))
+        (unless (string-equal sns (string-trim "MEG" sns))(progn
+          (if (> nlayout 3)(change-megsel (which-gra8 sns)))
+          (setq t1 (first R) span1 (second R))
+          (setq t0 (- (+ t1 (/ span1 2))(/ span 2)))
+          (set-resource  w :point t0 :selection-start t1 
+            :selection-length span1)
+          (sync-move-hook w)
+          (sync-select-hook w)
+          (set-values label-gra000 :labelString 
+            (XmString (format nil "~a    ~0,0f fT/cm" sns (fifth R))))
+          (set-values fit-button :labelString
+            (XmString (format nil "fit ~0,3f" (fourth R))))
+          (setq str (format nil "~0,0f" (* (fourth R) 1000)))
+          (setq str (string-left-trim " " str));" 1234"->"1234"
+          (setq str (str-append "a" str))
+          (system (format nil "xwd -id ~a >~a.xwd" id str))
+          (system (format nil "convert ~a.xwd ~a.png" str str))
+          (system (format nil "rm ~a.xwd" str))  )))))    
+    (manage form-memo)
+    (system "xset b on")
+    (set-values label-gra000 :labelString (XmString "Gra 204ch"))
+    (set-values fit-button   :labelString (XmString "to xfit")) 
+    (if (string-equal col "white")(change-color 1))
+))
+
+(defun memo-sort(kind);2 sns 3 peak 4 fT/cm 
+  (let ((memo)(n)(N)(L)(nL)(LL nil)(R)(strm)(sns)(k)(K nil)(str))
+    (setq memo (get-memo))
+    (setq strm (make-string-input-stream (XmTextGetString memo)))
+    (setq R (memo-getline))
+    (setq N (+ 1 (second R)))
+    (dotimes (n N)
+      (setq L (read-line-as-list strm))
+      (setq nL (length L))
+      (unless (< nL 5)(progn
+        (setq sns (format nil "~a" (third L)))
+        (unless (string-equal sns (string-trim "MEG" sns))(progn
+          (setq LL (append LL (list L)))
+          (if (= kind 2)
+            (setq k (read-from-string (string-trim "MEG" sns)))
+            (setq k (nth kind L)))
+          (setq K (append K (list k))))))))
+    (setq K (sort-order K))
+    (if (= kind 4)(setq K (reverse K)))
+    (memo-clear)
+    (dotimes (n (length K))
+      (setq L (nth (nth n K) LL))
+      (setq str (memo-line L))
+      (memo-insert (format nil "~a~%" str)))
+))
+
+(defun open-diskfile2(&optional (filename :interactive)) 
+  "replaced original open-disikfile 
+  within /graph-2.94/commands/open-diskfile.lsp"
+  (let ((w)(folder)(extension))
+    (setq w (G-widget "file"))
+    (setq folder (resource w :filename))
+    (if folder (setq folder 
+      (str-append (filename-directory folder) "*.fif"))
+      (setq folder "/data/neuro-data/*.fif"))
+    (set-resource w :directory folder)
+    (when (eql filename :interactive)(progn
+      (GtPopupEditor w)
+      (setq filename (resource w :filename))))
+    (setq extension (filename-extension filename))
+    (when (file-exists-p filename)
+      (when (string-equal extension "fif")(progn
+        (set-resource w :filename filename)
+        ;(done)
+        (change-layout 0);done before loading a file
+        (set-resource (G-widget "mtx") :matrix #m((0))))))
+))
+
+(defun rgb(r g b)
+  (+ (* (+ (* r 256) g) 256) b)
+)
+
+(defun rename-png(a b)
+  (let ((fid)(n)(L1)(L2)));a "a" b "ep"
+    (system (format nil "ls ~a*.png > ls.txt" a))
+    (setq fid (open "ls.txt" :direction :input))
+    (catch 'exit
+      (dotimes (n 500) ;max 500 png files
+        (setq L1 (read-line fid))
+        (unless L1 (throw 'exit t))
+        (setq L2 (string-left-trim a L1))
+        (setq L2 (str-append b L2))
+        (system (format nil "mv ~a ~a" L1 L2))))
+    (close fid)
+    (system "rm ls.txt")
+)) 
+
+(defun routine1()
+  (let ((span))
+    (memo-dipclear)    ;clear all dipoles
+    (memo-fitfit)      ;consecutive fit
+    (memo-dipselect)   ;extract high GOF dipoles
+    (setq span (XmTextGetString text-length))
+    (XmTextSetString text-length "5")
+    (change-length)
+    (memo-extractepoch);extract epoch with dipoles
+    (memo-save-png)    ;save consecutive epochs as PNG file
+    (XmTextSetString text-length span)
+    (change-length)
+))
+
+(defun routine2()
+  (memo-dipselect-png) ;"extract dipoles with PNG
+  (memo-extractepoch)  ;"extract epoch with dipoles
+  (rename-png "a" "ep");a*.png -> ep*.png
+)
+
+(defun ruler-vector2(nrow ncol)
+  (let ((mtx)(vecrow)(veccol))
+    (setq vecrow (ruler-vector 0 (- nrow 1) nrow))
+    (setq veccol (ruler-vector 0 (- ncol 1) ncol))
+    (setq veccol (*(transpose veccol) nrow))
+    (setq mtx (+ (* vecrow (make-matrix 1 ncol 1))
+                 (* (make-matrix nrow 1 1) veccol)))
+    (setq mtx (redimension mtx 1 (* nrow ncol)))
+    (return mtx)
+))
+
+(defun ruler-vector3(nrow ncol)
+  (let ((mtx))
+    (if (and (> nrow 1)(> ncol 1))
+      (setq mtx (+ (transpose (ruler-vector 0 (- nrow 1) nrow ncol))
+                   (* (ruler-vector 0 (- ncol 1) ncol nrow) nrow)))
+      (setq mtx (+ (ruler-vector 0 (- nrow 1) nrow ncol)
+                   (* (ruler-vector 0 (- ncol 1) ncol nrow) nrow))) )
+    (setq mtx (redimension mtx 1 (* nrow ncol)))
+    (return mtx)
+))
+
+(defun scan-autoscale();;under construction
+  (let ((val)(w)(vmax)(vmin)(amp)(k))
+    (setq w (G-widget "scan"))
+    (setq val (matrix-extent (resource (G-widget "mtx") :matrix)))
+    (setq vmin (first val) vmax (second val))
+    (setq amp (- vmax vmin))
+    (setq amp (/ amp 2))
+    (setq k (* amp 1e+13 1.25))
+    (XmTextSetString text-scan (format nil "~0,0f" k))
+    (change-scanscale)
+    (set-resource w :offsets (make-matrix 8 1 1))
+))
+
+(defun scan-check()
+  (let ((num)(mtx)(ncol)(xscale)(L nil)(n)(x)(K)(tt))
+    (setq num (read-from-string (XmTextGetString text-peak)))
+    (setq mtx (resource (G-widget "mtx") :matrix))
+    (setq ncol (array-dimension mtx 1))
+    (setq xscale (resource (G-widget "mtx") :x-scale))
+    (dotimes (n ncol)
+      (setq x (column n mtx))
+      (setq x (matrix-extent x))
+      (setq L (append L (list (second x)))))
+    (setq K (reverse (sort L)))
+    (setq x (nth num K))
+    ;(setq tt (get-universal-time))
+    (scan-check-fin3 L x xscale)
+    ;(print (- (get-universal-time) tt))
+))
+
+(defun scan-check-fin3(L x xscale)
+  (let ((str)(w)(mw)(mv)(fs)(tmin)(tmax)(n)(N)(t0)(mtx)(val)(R)(tt1)(tt2)(t1)(sns)(n0 nil)(t12))
+    (manage form-memo)
+    (setq w (G-widget "gra") mw (G-widget "mxwin"))
+    (setq mv (G-widget "mxvcp"))
+    (set-resource mv :mode "abs-max")
+    (link w mw)(link mw mv) 
+    (setq fs (/ 1 (resource w :x-scale))); xscale 0.5 fs 1000
+    (setq tmin (/ (resource w :low-bound) fs)
+          tmax (/ (resource w :high-bound) fs)); limitation of time
+    (setq tmax (- tmax xscale))
+    (setq N (length L))
+    (dotimes (n N)     
+      (unless (longworking "checking..." n N)(error "intgerrupted"))
+      (if (>= (nth n L) x)(progn
+        (setq t0 (+ (* n xscale) tmin))
+        (when (>= t0 tmax)(setq t0 tmax))
+        (set-resource mw :point t0 :end xscale) 
+        (setq mtx (get-data-matrix mv 0 (resource mv :high-bound)))
+        (setq val (max-vector (row 0 mtx)))
+        (setq tt1 (+ t0 (/ (second val) fs)))
+        (setq t1 (- tt1 (/ xscale 2)))
+        (when (< t1 tmin)(setq t1 tmin))
+        (when (> t1 tmax)(setq t1 tmax))
+        (set-resource mw :point t1 :end xscale)
+        (setq mtx (get-data-matrix mv 0 (resource mv :high-bound)))
+        (setq val (max-vector (row 0 mtx)))
+        (setq tt2 (+ t1 (/ (second val) fs)))
+        (setq t12 (abs (- tt1 tt2)))
+        (when (< t12 2e-3)(progn
+          (setq sns (vref (row 1 mtx)(second val)))
+          (setq sns (get-property w (round sns) :name))
+          (setq R (list t1 xscale sns tt2 (* (first val) 1e+13)))
+          (setq str (memo-line R))
+          (if n0 (setq str (format nil "~%~a" str))(setq n0 t))
+          (memo-insert str))))))
+     (longworking "done" N N)    
+     (link nil-pointer (G-widget "mxwin"))
+))
+
+(defun scan-data(step)
+  (let ((w)(T0)(Tend)(STEP)(xscale)(t0)(n)(N)(T1)(tend)(str)(L nil)(tt))
+    (setq w (G-widget "meg"))
+    (setq xscale (resource w :x-scale))
+    (setq T0   (resource w :low-bound))
+    (setq Tend (resource w :high-bound))
+    (setq STEP (round (/ step xscale)))
+    (setq t0   (* T0   xscale))
+    (setq tend (* Tend xscale))
+    (setq N (round (/ (- Tend T0) STEP)))
+    (dotimes (n 8)
+      (require-widget :selector (format nil "GG~d" n)))
+    (select-to (G-widget "GG0")(meg   0 -  25))
+    (select-to (G-widget "GG1")(meg  25 -  51))
+    (select-to (G-widget "GG2")(meg  52 -  77))
+    (select-to (G-widget "GG3")(meg  78 - 103))
+    (select-to (G-widget "GG4")(meg 104 - 127))
+    (select-to (G-widget "GG5")(meg 128 - 151))
+    (select-to (G-widget "GG6")(meg 152 - 177))
+    (select-to (G-widget "GG7")(meg 178 - 203))
+    (dotimes (n 8)
+      (require-widget :vecop (format nil "GV~d" n)
+        (list "mode" "abs-max")))
+    ;(dotimes (n 8); it does not work properly!
+    ;  (link (G-widget (format nil "GG~d" n))
+    ;        (G-widget (format nll "GV~d" n)))) 
+    (link (G-widget "GG0")(G-widget "GV0"))
+    (link (G-widget "GG1")(G-widget "GV1"))
+    (link (G-widget "GG2")(G-widget "GV2"))
+    (link (G-widget "GG3")(G-widget "GV3"))
+    (link (G-widget "GG4")(G-widget "GV4"))
+    (link (G-widget "GG5")(G-widget "GV5"))
+    (link (G-widget "GG6")(G-widget "GV6"))
+    (link (G-widget "GG7")(G-widget "GV7"))
+    ;(setq tt (get-universal-time))
+    (dotimes (n N)
+      (unless (longworking "scanning..." n N)(error "interrupted"))
+      (setq T1 (+ T0 STEP))
+      (if (> T1 Tend)(setq STEP (- Tend T0)))
+      (setq L (append L (scan-data-core T0 STEP)))
+      (setq t0 (+ t0 step))
+      (setq T0 (round (/ t0 xscale))))
+    (longworking "done" N N)
+    (dotimes (n 8)
+      (GtDeleteWidget (G-widget (format nil "GG~d" n)))
+      (GtDeleteWidget (G-widget (format nil "GV~d" n))))
+    (scan-plot (matrix L) step)
+    (scan-autoscale)
+    ;(print (- (get-universal-time) tt))
+))
+
+(defun scan-data-core(T0 STEP)
+  (let ((L nil)(n)(str)(M)(x))
+    (dotimes (n 8)
+      (setq M (get-data-matrix (G-widget (format nil "GV~a" n)) T0 STEP))
+      (setq x (second (matrix-extent (row 0 M))))
+      (setq L (append L (list x))))
+    (return (list L))
+))
+
+(defun scan-plot(mtx step)
+  (let ((form)(M)(disp)(dispw)(x)(w))
+    (if (G-widget "mtx" :quiet)(GtDeleteWidget (G-widget "mtx")))
+    (setq M (require-widget :matrix-source "mtx"))
+    (setq x (array-dimension mtx 0))
+    (setq x (* x step))
+    ;(setq y (second (matrix-extent mtx)))
+    (set-resource M :matrix (transpose mtx) :x-scale step :x-unit "s")
+    (setq w (G-widget "scan"))
+    (set-resource w :superpose t)
+    (link M w);; this must be here!
+    (set-resource w :point 0 :length x)
+))
+
+(defun scan-select-hook(&optional (nn 0));0 scan 1 scan1
+  (let ((w (G-widget "scan"))(b (G-widget "buf"))(t0)(span)(span2)(gap)(w1 nil))
+    (if (G-widget "scan1" :quiet)(setq w1 (G-widget "scan1")))
+    (if (= nn 1)(progn
+      (setq t0   (resource w1 :selection-start))
+      (setq span (resource w1 :selection-length))
+      (set-resource w :selection-start  t0)
+      (set-resource w :selection-length span))
+    (progn
+      (setq t0   (resource w :selection-start))
+      (setq span (resource w :selection-length))
+      (if w1 (progn
+        (set-resource w1 :selection-start  t0)
+        (set-resource w1 :selection-length span)))))
+    (setq span2 (read-from-string (XmTextGetString text-length)))
+    (setq t0 (- (+ t0 (/ span 2))(/ span2 2)))
+    (setq gap (* (resource b :low-bound)(resource b :x-scale)))
+    (setq t0 (+ t0 gap))
+    (XmTextSetString text-start (format nil "~0,2f" t0))
+    (change-start)
+    (if (> span 0)(scan-select-max))
+))
+
+(defun scan-select-max()
+  (let ((mtx)(w)(t0)(span)(xcale)(ch)(str)(chname))
+    (setq w (G-widget "scan"))
+    (setq t0   (resource w :selection-start))
+    (setq span (resource w :selection-length))
+    (setq xscale (resource w :x-scale))
+    (setq t0 (round (/ t0 xscale)))
+    (setq span (round (/ span xscale)))
+    (setq mtx (get-data-matrix w t0 span))
+    (setq ch (second (max-matrix mtx)))
+    (case ch
+      (0 (setq str "L-temporal"))
+      (1 (setq str "R-temporal"))
+      (2 (setq str "L-parietal"))
+      (3 (setq str "R-parietal"))
+      (4 (setq str "L-occipital"))
+      (5 (setq str "R-occipital"))
+      (6 (setq str "L-frontal"))
+      (7 (setq str "R-frontal"))
+    )
+    (setq chname (get-property (G-widget "disp001") 0 :name))
+    (if (string-equal chname (string-right-trim "1" chname))
+      (setq str (format nil "gra-~a" str))
+      (setq str (format nil "mag-~a" str)))
+    (change-megsel str)
+))
+
+(defun scan1-plot()
+  (let ((w0)(w1)(w2)(w3)(n)(names)(mtx))
+    (unless (G-widget "scan1" :quiet)(require-widget :plotter "scan1"))
+    (unless (G-widget "fmul" :quiet)(require-widget :unary "fmul"))
+    (setq w0 (G-widget "mtx"))
+    (setq w1 (G-widget "scan"))
+    (setq w2 (G-widget "fmul"))
+    (set-resource w2 :function 'fmul :arguments '(1e+13))
+    (setq w3 (G-widget "scan1"))
+    (link w0 w2)
+    (link w2 w3)
+    (setq names (list "L-temporal" "R-temporal" "L-parietal" "R-parietal" "L-occipital" "R-occipital" "L-frontal" "R-frontal"))
+    (dotimes (n 8)
+      (set-property w0 n :name (nth n names)))
+    (set-resource w3 :ch-label-space 120)
+    (setq names (list :point :length :default-color :background :highlight :baseline-color))
+    (dolist (n names)
+      (set-resource w3 n (resource w1 n)))
+    (setq n (matrix-extent (resource w0 :matrix)))
+    (setq n (* (second n) 1e+13))
+    (set-resource w3 :scales (make-matrix 8 1 n)
+                     :offsets (make-matrix 8 1 0.5)
+                     :select-hook '(scan-select-hook 1))
+    (GtPopupEditor w3)
+))
+
+(defun screen-capture(&optional (disp form000))
+  (let ((id)(str))
+     (if (G-widget-p disp)(progn
+        (GtPopupEditor disp)
+        (setq disp (resource disp :display-widget))))
+     (setq str (get-datetime))
+     (setq id (window-id (XtWindow disp)))
+     (system (format nil "xwd -id ~a >~a.xwd" id str))
+     (system (format nil "convert ~a.xwd ~a.png" str str))
+     (system (format nil "rm ~a.xwd" str))
+))
+
+(defun set-button-noedge(btn)
+  (set-values btn :shadowThickness 0 :detailShadowThickness 0 
+    :background (rgb 240 240 240)))
+)
+
+(defun set-default()
+  ;; execute after load a fif file
+  (let ((bund)(smp)(t0)(n)(disp))
+    (setq bnd (resource (G-widget "buf") :low-bound))
+    (setq smp (resource (G-widget "buf") :x-scale))
+    (setq t0 (* bnd smp))
+    (XmTextSetString text-start  (format nil "~0,2f" t0))
+    (XmTextSetString text-length (format nil "~0,2f" 10.00))
+    (dotimes (n 10)
+      (setq disp (format nil "disp00~a" n))
+      (if (G-widget disp :quiet)(progn
+        (set-resource (G-widget disp):point t0 :length 10)
+      )))
+    (layout1gra)
+    (EEGlead1)
+    (set-resource (G-widget "disp009") :ch-label-space 80)
+    (add-sync)
+))
+
+(defun set-near-coil(ch);;under construction
+  (let ((w (G-widget "meg2"))(nch)(str)(text sns-num)(n)(m)(sns)(snss nil)(str "MEG["))
+    (setq ch (read-from-string (string-trim "MEG " ch)))
+    (setq ch (round (floor (/ ch 10))))
+    (setq nch (read-from-string (XmTextGetString text)))
+    (setq nch (round nch))
+    (if (> nch 102)(setq nch 30))
+    (if (< nch 4)(setq nch 30))
+    (XmTextSetString text (format nil "~a" nch))
+    (dotimes (n (length near-coil))
+      (if (= ch (first (nth n near-coil)))(setq sns (nth n near-coil))))
+    (dotimes (m nch)
+      (setq snss (append snss (list (nth m sns)))))
+    (dotimes (m nch)
+      (setq n (nth m snss))
+      (setq str (format nil "~a ~a1 ~a2 ~a3" str n n n)))
+    (setq str (format nil "~a]" str));
+    (set-resource w :names (list str))
+))
+
+(defun setframe001()
+  (let ((n)(form)(pane)(form1)(form2)(form3)(form4))
+    (setq form (make-form frame001 "form"))
+    (setq pane (XmCreatePanedWindow form "pane" (X-arglist) 0))
+    (set-values pane :separatorOn 0 :sasIndent -1 :resize 1
+      :topAttachment  XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_FORM :rightAttachment  XmATTACH_FORM)
+    (setq form1 (make-form pane "form1"))
+    (setq form2 (make-form pane "form2"))
+    (setq form3 (make-form pane "form3"))
+    (setq form4 (make-form pane "form4"))
+
+    (dolist (n (list form1 form2 form3 form4 pane))(manage n))
+    ; Start & length
+    (setframe001-time form1)
+ 
+    ;; MEG
+    (setframe001-meg form2)
+
+    ;;EEG etc
+    (setframe001-eeg form3)
+
+    ;; plot
+    (setframe001-plot form4)
+
+    ;; finish
+    (dolist (n (list form))(manage n))
+ 
+    ;(set-values frame1 :width 200);; <=important!
+    (XmTextSetString text-start  "0.00")
+    (XmTextSetString text-length "10.00")
+    (XmTextSetString text-gra    "500")
+    (XmTextSetString text-mag    "2500") 
+    (XmTextSetString text-megfil "(band-pass 3 35)")
+    (XmTextSetString text-eeg    "60")
+    (XmTextSetString text-ecg    "300")
+    (XmTextSetString text-eog    "100")
+    (XmTextSetString text-eegfil "(band-pass 0.5 50)")
+    (XmTextSetString sns-num "30")
+    (text-callback)
+))
+
+(defun setframe001-eeg(form)
+  (let ((text1)(text2)(text3)(R)(menubar)(text4)(menu))
+    (setq text1 (make-text form "text1" :topAttachment XmATTACH_FORM 
+      :rightAttachment XmATTACH_FORM :width 70))
+    (setq text2 (make-text form "text2" :topAttachment XmATTACH_WIDGET 
+      :topWidget text1 :leftAttachment XmATTACH_FORM :width 170))
+    (setq label2 (make-label form "label2" :topAttachment   XmATTACH_WIDGET 
+      :topWidget text1 :labelString (XmString "Hz") :topOffset 10 
+      :leftAttachment  XmATTACH_WIDGET :leftWidget text2))
+    (setq text3 (make-text form "text3" :topAttachment XmATTACH_WIDGET 
+      :topWidget text2 :rightAttachment XmATTACH_FORM :width 70))
+    (setq text4 (make-text form "text4" :topAttachment XmATTACH_WIDGET 
+      :topWidget text3 :rightAttachment XmATTACH_FORM :width 70))    
+    (dolist (n (list text1 text2 text3 text4 label2))(manage n))
+    (setq text-eeg text1)   ;;global variant
+    (setq text-eegfil text2);;global variant
+    (setq text-ecg text3)   ;;global variant
+    (setq text-eog text4)   ;;global variant
+    (setq R (add-arrows form text1 ""))
+    (set-lisp-callback (first   R) "activateCallback" '(UpDownText text-eeg  1))
+    (set-lisp-callback (second  R) "activateCallback" '(UpDownText text-eeg -1))    (dolist (n R)(manage n))
+    (setq menubar (make-menu-bar form "menubar"
+      :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget text1
+      :rightAttachment XmATTACH_WIDGET :rightWidget text1
+      :detailShadowThickness 0 :shadowThickness 0))
+    (setq menu (make-menu menubar "EEG   uV" nil :tear-off
+      '("banana leads" (EEGlead1))
+      '("coronal leads" (EEGlead2))
+      '("monopolar leads" (EEGlead3))
+      '("auto scale" (autoscale "EEG"))))
+    (manage menubar); unnecessory (manage menu)
+    (setq R (add-arrows form text3 ""))
+    (setq menubar (make-menu-bar form "menubar"
+      :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget text3
+      :rightAttachment XmATTACH_WIDGET :rightWidget text3
+      :detailShadowThickness 0 :shadowThickness 0))
+    (setq menu (make-menu menubar "ECG   uV" nil 
+      '("auto scale" (autoscale "ECG"))))
+    (manage menubar)
+    (set-lisp-callback (first   R) "activateCallback" '(UpDownText text-ecg  1))
+    (set-lisp-callback (second  R) "activateCallback" '(UpDownText text-ecg -1))
+    (dolist (n R)(manage n))
+    (setq R (add-arrows form text4 ""))
+    (setq menubar (make-menu-bar form "menubar"
+      :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget text4
+      :rightAttachment XmATTACH_WIDGET :rightWidget text4
+      :detailShadowThickness 0 :shadowThickness 0))
+    (setq menu (make-menu menubar "EOG   uV" nil 
+      '("auto scale" (autoscale "EOG"))))
+    (manage menubar)
+    (set-lisp-callback (first   R) "activateCallback" '(UpDownText text-eog  1))
+    (set-lisp-callback (second  R) "activateCallback" '(UpDownText text-eog -1))
+    (dolist (n R)(manage n))
+))
+
+(defun setframe001-meg(form)
+  (let ((text1)(text2)(rb)(text3)(label)(R))
+    (setq text1 (make-text form "text1" :topAttachment XmATTACH_FORM 
+      :rightAttachment XmATTACH_FORM :width 70))
+    (setq text2 (make-text form "text2" :topAttachment XmATTACH_WIDGET 
+      :topWidget text1
+       :rightAttachment XmATTACH_FORM :width 70))
+    (setq rb (XmCreateRadioBox form "rb" (X-arglist) 0))
+    (set-values rb :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_FORM)
+    (setq gra204 (XmCreateToggleButtonGadget rb "gra204" (X-arglist) 0));;global variant
+    (set-values gra204 :labelString (XmString "GRA  fT/cm") :set 1)
+    (setq mag102 (XmCreateToggleButtonGadget rb "mag102" (X-arglist) 0));;global variant
+    (set-values mag102 :labelString (XmString "MAG   fT") :set 0)
+    (setq text3 (make-text form "text3" :topAttachment XmATTACH_WIDGET :topWidget text2
+      :leftAttachment XmATTACH_FORM :width 170))
+    (setq label (make-label form "label" :topAttachment XmATTACH_WIDGET :topWidget text2 :topOffset 10
+     :rightAttachment XmATTACH_FORM :labelString (XmString "Hz")))
+    (dolist (n (list text1 text2 gra204 mag102 rb text3 label))(manage n))
+    (setq text-gra text1)   ;;global variant
+    (setq text-mag text2)   ;;global variant
+    (setq text-megfil text3);;global variant
+    (setq R (add-arrows form text1 ""))
+    (set-lisp-callback (first   R) "activateCallback" '(UpDownText text-gra  1))
+    (set-lisp-callback (second  R) "activateCallback" '(UpDownText text-gra -1))  
+    (dolist (n R)(manage n))
+    (setq R (add-arrows form text2 ""))
+    (set-lisp-callback (first   R) "activateCallback" '(UpDownText text-mag  1))
+    (set-lisp-callback (second  R) "activateCallback" '(UpDownText text-mag -1))  
+    (dolist (n R)(manage n))
+))
+
+
+(defun setframe001-plot(form0)
+  (let ((form)(disp)(dispw)(label1)(btn)(form1)(arrow1)(arrow2)(arrow3)(arrow4)(n)(rb)(tb1)(tb2)(n)(rb1)(tb3)(tb4)(tb5))
+    (setq frame (make-frame form0 "frame" :topAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
+      :bottomAttachment XmATTACH_FORM))
+    (set-values frame :height 250)
+    (setq form (make-form frame "form"))
+    (setq label1 (make-label frame "label1" :childType XmFRAME_TITLE_CHILD
+      :labelString (XmString "Gra 204ch")))
+    (manage label1)
+    (setq form (make-form frame "form" :height 250 :resize 0))
+    (setq rb1 (XmCreateRadioBox form "rb1" (X-arglist) 0))
+    (set-values rb1 :bottomAttachment XmATTACH_FORM :numColumns 3
+      ;:bottomOffset 30
+      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM)
+    (setq tb3 (XmCreateToggleButtonGadget rb1 "tb3" (X-arglist) 0))
+    (setq tb4 (XmCreateToggleButtonGadget rb1 "tb4" (X-arglist) 0))
+    (setq tb5 (XmCreateToggleButtonGadget rb1 "tb5" (X-arglist) 0))
+    (set-values tb3 :labelString (XmString "GRA") :set 0)
+    (set-values tb4 :labelString (XmString "MAG") :set 0)
+    (set-values tb5 :labelString (XmString "both") :set 1)
+    (setq gramag 306);global variant
+    (set-lisp-callback tb3 "valueChangedCallback" '(setq gramag 204))
+    (set-lisp-callback tb4 "valueChangedCallback" '(setq gramag 102))
+    (set-lisp-callback tb5 "valueChangedCallback" '(setq gramag 306))
+    (setq sns-num (make-text form "sns-num" 
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget rb1
+      :rightAttachment XmATTACH_FORM :width 50)) 
+    (setq rb (XmCreateRadioBox form "rb" (X-arglist) 0))
+    (set-values rb :bottomAttachment XmATTACH_WIDGET
+      :bottomWidget rb1  :numColumns 2 :leftAttachment XmATTACH_FORM 
+      :rightAttachment XmATTACH_WIDGET :rightWidget sns-num)
+    (setq tb1 (XmCreateToggleButtonGadget rb "tb1" (X-arglist) 0))
+    (set-values tb1 :labelString (XmString "use 102") :set 1) 
+    (setq tb2  (XmCreateToggleButtonGadget rb "tb2"  (X-arglist) 0))
+    (set-values tb2  :labelString (XmString "use") :set 0)
+    (setq arrow1 (XmCreateArrowButton form "arrow1" (X-arglist) 0))   
+    (set-lisp-callback tb1 "valueChangedCallback" '(setq meg306 t))
+    (set-lisp-callback tb2 "valueChangedCallback" '(setq meg306 nil))
+    (set-values arrow1 :leftAttachment XmATTACH_FORM 
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget rb
+      :arrowDirection XmARROW_UP :shadowTickness 0 
+      :detailShadowThickness 0 :width 15)
+    (setq arrow2 (XmCreateArrowButton form "arrow2" (X-arglist) 0))
+    (set-values arrow2 :leftAttachment XmATTACH_WIDGET :leftWidget arrow1 
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget rb
+      :arrowDirection XmARROW_DOWN :shadowThickness 0 
+      :detailShadowThickness 0 :width 15)
+    (setq arrow3 (XmCreateArrowButton form "arrow3" (X-arglist) 0))
+    (set-values arrow3 :leftAttachment XmATTACH_WIDGET :leftWidget arrow2 
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget rb
+      :arrowDirection XmARROW_LEFT :shadowThickness 0 
+      :detailShadowThickness 0 :width 15)
+    (setq arrow4 (XmCreateArrowButton form "arrow4" (X-arglist) 0))
+    (set-values arrow4 :leftAttachment XmATTACH_WIDGET :leftWidget arrow3 
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget rb
+      :arrowDirection XmARROW_RIGHT :shadowThickness 0 
+      :detailShadowThickness 0 :width 15)
+    (dolist (n (list arrow1 arrow2 arrow3 arrow4))
+      (set-values n :shadowThickness 0 :detaileShadowThickness 0
+       :foreground (rgb 0 100 0)))
+    (set-lisp-callback arrow1 "activateCallback" '(change-grascale000 -1))
+    (set-lisp-callback arrow2 "activateCallback" '(change-grascale000 1))
+    (set-lisp-callback arrow3 "activateCallback" '(change-start000 -1))
+    (set-lisp-callback arrow4 "activateCallback" '(change-start000 1))
+    (setq btn (make-button form "btn" :labelString (XmString "fit --")
+      :leftAttachment XmATTACH_WIDGET :leftWidget arrow4
+      :rightAttachment XmATTACH_FORM 
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget rb))
+    (dolist (n (list rb1 tb3 tb4 tb5 sns-num tb1 tb2 rb arrow1 arrow2 arrow3 arrow4 btn))
+      (manage n))
+    (if (G-widget "000" :quiet)(GtDeleteWidget (G-widget "000")))
+    (setq disp (GtMakeObject 'plotter :name "000" :display-parent form 
+      :scroll-parent form :no-controls t))
+    (put disp :display-form form)
+    (GtPopupEditor disp)
+    (setq dispw (resource (G-widget disp) :display-widget))
+    (set-values dispw :resize 0
+      :topAttachment XmATTACH_FORM :bottomAttachment XmATTACH_WIDGET :bottomWidget arrow1
+      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM)
+    (manage form)(manage frame)
+    (set-resource (G-widget "000") :superpose t :select-hook '(findmax000))
+    (link (G-widget "win000")(G-widget "000"))
+    (set-values frame001 :width 200)
+    (set-lisp-callback btn "activateCallback" '(fit000))
+    (setq label-gra000 label1);global variant
+    (setq fit-button btn);global variant
+    (setq meg306 t);global variant
+    (set-values form :resize 0)
+    (set-values btn :resize 0)
+    (setq form-plot form);global variant
+))
+
+(defun setframe001-time(form)
+  (let ((label1)(btn)(label2)(label3)(text1)(text2)(n))
+    ;(setq form (make-form frame "form"))
+    (setq label1 (make-label form "label1" :topAttachment XmATTACH_FORM 
+      :leftAttachment XmATTACH_FORM
+      ;:labelString (XmString "  Start       &       length")))
+      :labelString (XmString " Start & length")))
+    (setq btn (make-button form "btn" :labelString (XmString "redraw")
+      :rightAttachment XmATTACH_FORM :topAttachment XmATTACH_FORM))
+    (set-button-noedge btn)
+    (setq btn1 (make-button form "btn1" :labelString (XmString "ssp")
+      :rightAttachment XmATTACH_WIDGET :rightWidget btn
+      :rightOffset 10 :topAttachment XmATTACH_FORM))
+    (set-button-noedge btn1)
+    (set-lisp-callback btn "activateCallback" '(change-layout 0))
+    (set-lisp-callback btn1 "activateCallback" '(setSSP))
+    (setq text1 (make-text form "text1" :topAttachment XmATTACH_WIDGET 
+      :topWidget label1 :leftAttchment   XmATTACH_FORM :width 70))
+    (setq label2 (make-label form "label2" :topAttachment XmATTACH_WIDGET
+      :topWidget label1 :leftAttachment XmATTACH_FORM
+      :leftOffset 70 :topOffset 10 :labelString (XmString "s")))
+    (setq label3 (make-label form "label3" :topAttachment XmATTACH_WIDGET
+      :topWidget label1 :rightAttachment XmATTACH_FORM :rightOffset 10
+      :topOffset 10 :labelString (XmString "s")))
+    (setq text2 (make-text form "text2" :topAttachment XmATTACH_WIDGET 
+      :topWidget label1  :rightAttachment XmATTACH_WIDGET 
+      :rightWidget label3 :width 70))
+    (dolist (n (list label1 btn btn1 text1 label2 label3 text2))(manage n))
+    (setq text-start text1)  ;;global variant
+    (setq text-length text2) ;;global variant
+))
+
+(defun setframe002()
+  (let ((form)(frame1)(frame2)(n))
+    (setq form  (make-form frame002 "form"))
+    (setq frame1 (make-frame form "frame1" 
+      :topAttacment    XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :rightAttachment XmATTACH_FORM :width 200 :height 60))
+    (setframe002-scan frame1)
+    (manage frame1)
+    (setq frame2 (make-frame form "frame2"
+      :topAttachment   XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :leftAttachment  XmATTACH_FORM :shadowThickness 0
+      :rightAttachment XmATTACH_WIDGET :rightWidget frame1))
+    (manage frame2)
+    (setframe002-plot frame2)
+    (manage form)
+))
+
+(defun setframe002-plot(frame)
+  (let ((form)(disp)(dispw))
+    (setq form (make-form frame "form"))
+    (manage form)
+    (setq disp (GtMakeObject 'plotter :name "scan" :display-parent form
+      :scroll-parent form :no-controls t))
+    (put disp :display-form form)
+    (GtPopupEditor disp)
+    (setq dispw (resource disp :display-widget))
+    (set-values dispw :resize 1
+      :topAttachment   XmATTACH_FORM :leftAttachment   XmATTACH_FORM
+      :rightAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM)
+    (set-resource disp :scroll-visible 0 :x-unit "s"
+      :offsets (make-matrix 8 1 0.9)
+      :select-hook '(scan-select-hook))
+    (change-scanscale)
+))
+
+(defun setframe002-scan(frame)
+  (let ((form)(text1)(text2)(R)(ar1)(ar2)(ar3)(ar4)(btn1)(btn2)(btn3)(n))
+    (setq form (make-form frame "form" :height 60 :width 200))
+    (setq label (make-label form "label" :labelString (XmString "peaks")
+      :rightAttachment XmATTACH_FORM :topAttachment XmATTACH_FORM
+      :topOffset 5 :rightOffset 10))
+    (setq text1 (make-text form "text1" :rightAttachment XmATTACH_WIDGET
+      :rightWidget label :rightOffset 10 :topAttachment XmATTACH_FORM
+      :width 40))
+    (XmTextSetString text1 "50")
+    (setq btn1 (make-button form "btn1" :labelString (XmString "scan")
+      :rightAttachment  XmATTACH_FORM :width 60
+      :topAttachment    XmATTACH_WIDGET :topWidget text1
+      :bottomAttchment  XmATTACH_FORM))
+    (set-button-noedge btn1)
+    (setq btn2 (make-button form "btn2" :labelString (XmString "check")
+      :rightAttachment   XmATTACH_WIDGET :rightWidget btn1
+      :topAttachment    XmATTACH_WIDGET  :topWidget text1
+      :bottomAttachment XmATTACH_FORM :rightOffset 10 :width 60))
+    (set-button-noedge btn2)
+    (setq btn3 (make-button form "btn3" :labelString (XmString "8 waves")
+      :leftAttachment   XmATTACH_FORM 
+      :topAttachment    XmATTACH_WIDGET  :topWidget text1
+      :bottomAttachment XmATTACH_FORM :width 60))
+    (set-button-noedge btn3)
+    (setq text2 (make-text form "text2" :width 70 
+      :topAttachment    XmATTACH_FORM 
+      :leftAttachment   XmATTACH_FORM))
+    (XmTextSetString text2 "500")
+    (setq R (add-arrows form text2 ""))
+    (setq ar1 (first R) ar2 (second R))
+    (setq ar3 (XmCreateArrowButton form "arrow3" (X-arglist) 0))
+    (setq ar4 (XmCreateArrowButton form "arrow4" (X-arglist) 0))
+    (set-values ar3 :leftAttachment XmATTACH_FORM :leftOffset 65
+      :topAttachment    XmATTACH_WIDGET :topWidget text2 
+      :shadowThickness 0 :detailShadowThickness 0 :foreground (rgb 0 0 150)
+      :arrowDirection XmARROW_UP :width 15)
+    (set-values ar4 :leftAttachment XmATTACH_FORM :leftOffset 80
+      :topAttachment    XmATTACH_WIDGET :topWidget text2 
+      :shadowThickness 0 :detailShadowThickness 0 :foreground (rgb 0 0 150)
+      :arrowDirection XmARROW_DOWN :width 15)    
+    (setq text-scan text2)
+    (set-lisp-callback text-scan "activateCallback" '(change-scanscale))
+    (setq text-peak text1)
+    (set-lisp-callback btn1 "activateCallback" '(scan-data 0.5))    
+    (set-lisp-callback btn2 "activateCallback" '(scan-check))
+    (set-lisp-callback btn3 "activateCallback" '(scan1-plot))
+    (set-lisp-callback ar1  "activateCallback" '(UpDownText text-scan  1))
+    (set-lisp-callback ar2  "activateCallback" '(UpDownText text-scan -1))  
+    (set-lisp-callback ar3  "activateCallback" '(change-offsets -0.1))
+    (set-lisp-callback ar4  "activateCallback" '(change-offsets  0.1))
+    (dolist (n (list label text1 text2 ar1 ar2 ar3 ar4 btn1 btn2 btn3 form))(manage n))))
+))
+
+(defun setSSP()
+  (let ((filename (resource (G-widget "file") :filename)))
+    (if (not (string-equal (filename-extension filename) "fif"))
+      (setq filename "/neuro/dacq/setup/ssp/online-0.fif"))
+    (graph::ssp-popup)
+    (graph::ssp-load-file filename)
+    (setq graph::ssp-vectors graph::ssp-vector-pool)
+    (graph::ssp-rebuild-space)
+    (graph::ssp-on)
+))
+
+(defun sort(xlist)
+  (let ((N0 (length xlist))(N1)(xx nil)(xmin)(R nil))
+    (dolist (i xlist)(setq xx (append xx (list i))));; We must duplicate xlist
+    (while (> N0 0)
+      (setq xmin (apply #'min xx))
+      (setq xx (delete xmin xx))
+      (setq N1 (length xx))
+      (dotimes (i (- N0 N1))
+        (setq R (append R (list xmin))))
+      (setq N0 N1))
+    (return R)
+))
+
+(defun sort2(xlist)
+  (let ((N)(xmin)(x nil)(xx nil))
+    (dotimes (i (length xlist))(setq xx (append xx (list (nth i xlist)))))
+    (setq N (length xx))
+    (while (> N 0)
+      (setq xmin (apply #'min xx))
+      (setq xx (delete xmin xx))
+      (setq N (length xx))
+      (setq x (append x (list xmin))))
+    (return x)
+))
+
+(defun sort-order(xlist)
+  (let ((xx (sort2 xlist))(x nil)(R nil))
+    (dotimes (i (length xx) R)
+      (setq x (nth i xx))
+      (dotimes (j (length xlist))
+        (if (equal x (nth j xlist))(setq R (append R (list j))))))
+    (return R)
+))
+
+(defun sync-move-hook(w)
+  (let ((n)(t0)(span)(disp))
+  (setq t0   (resource w :point))
+  (setq span (resource w :length))
+  (setq t0   (format nil "~0,2f" t0))
+  (setq span (format nil "~0,2f" span))
+  (XmTextSetString text-start t0)
+  (XmTextSetString text-length span)
+  (setq t0 (read-from-string t0))
+  (setq span (read-from-string span))
+  (dotimes (n 10)
+    (setq disp (format nil "disp00~a" n))
+    (if (G-widget disp :quiet)
+      (set-resource (G-widget disp) :point t0 :length span)))
+  (GtUnlinkWidget (G-widget "win000"))
+))
+
+(defun sync-select-hook(w)
+  (let ((n)(t0)(span)(disp)(win (G-widget "win000"))(plot (G-widget "000"))(nch)(t1))
+    (setq t0   (resource w :selection-start))
+    (setq span (resource w :selection-length))
+    (GtUnlinkWidget win);;necessary! important
+    (set-resource win  :point t0 :end span)
+    (set-resource plot :point t0 :length span)
+
+    (dotimes (n 10)
+      (setq disp (format nil "disp00~a" n))
+      (if (G-widget disp :quiet)
+        (set-resource (G-widget disp) 
+          :selection-start t0 :selection-length span)))
+    (setq nch (resource plot :channels))
+    (link (G-widget "gra") win)
+    (link win plot)
+    (set-resource plot :scales (make-matrix 204 1 (* (get-grascale) 2)))
+    ;(if (= (resource (G-widget "scan"):channels) 8)
+    ;  (progn (setq t1 (+ t0 (/ span 2)))
+    ;         (set-resource (G-widget "scan") :selection-start t1)
+    ;         (set-resource (G-widget "scan") :selection-length 0.0)))
+)) 
+
+(defun text-callback()
+  (set-lisp-callback text-gra    "activateCallback" '(change-grascale))
+  (set-lisp-callback text-mag    "activateCallback" '(change-magscale))
+  (set-lisp-callback text-megfil "activateCallback" '(set-resource (G-widget "MEG-fil") 
+    :pass-band (read-from-string (XmTextGetString text-megfil))))
+  (set-lisp-callback text-start  "activateCallback" '(change-start))   
+  (set-lisp-callback text-length "activateCallback" '(change-length))
+  (set-lisp-callback gra204      "valueChangedCallback" '(layout-meg 0))
+  (set-lisp-callback mag102      "valueChangedCallback" '(layout-meg 1)) 
+  (set-lisp-callback text-eeg    "activateCallback" '(change-eegscale))
+  (set-lisp-callback text-ecg    "activateCallback" '(change-eegscale))
+  (set-lisp-callback text-eog    "activateCallback" '(change-eegscale))  
+  (set-lisp-callback text-eegfil "activateCallback" '(set-resource (G-widget "EEG-fil") 
+    :pass-band (read-from-string (XmTextGetString text-eegfil))))
+)
+
+(defun UpDownText(text val)
+  (let ((x)(xx)(n1)(n2)(str))
+    (setq x (read-from-string (XmTextGetString text)))
+    (setq xx (pow 0.8 val))
+    (setq str (format nil "~0,0f" (* x xx)))
+    (XmTextSetString text str))
+    (cond
+      ((eq text text-gra)(change-grascale))
+      ((eq text text-mag)(change-magscale))
+      ((eq text text-eeg)(change-eegscale))
+      ((eq text text-ecg)(change-eegscale))
+      ((eq text text-eog)(change-eegscale))
+      ((eq text text-scan)(change-scanscale))
+    )
+))
+
+(defun UpDownTextPower(text val)
+  (let ((x)(xx)(n1)(n2)(str))
+    (setq x (read-from-string (XmTextGetString text)))
+    (setq xx (pow 0.8 val))
+    (setq x (* x xx))
+    (setq n1 (round (floor (log10 x))))
+    (setq n2 (/ x (pow 10 n1)))
+    (setq str (format nil "~0,2fe~a" n2 n1))
+    (XmTextSetString text str))
+    (cond
+      ((eq text text-gra)(change-grascale))
+      ((eq text text-mag)(change-magscale))
+      ((eq text text-eeg)(change-eegscale))
+      ((eq text text-ecg)(change-eegscale))
+      ((eq text text-eog)(change-eegscale))
+      ((eq text text-scan)(change-scanscale))
+    )
+))
+
+(defun which-gra8(sns)
+  (let ((n)(nn nil)(str))
+    (dotimes (n 204)
+      (if (string-equal sns (get-property (G-widget "gra") n :name))
+        (setq nn n)))
+    (cond 
+      ((< nn  26)(setq str "gra-L-temporal"))
+      ((< nn  52)(setq str "gra-R-temporal"))
+      ((< nn  78)(setq str "gra-L-parietal"))
+      ((< nn 104)(setq str "gra-R-parietal"))
+      ((< nn 128)(setq str "gra-L-occipital"))
+      ((< nn 152)(setq str "gra-R-occipital"))
+      ((< nn 178)(setq str "gra-L-frontal"))
+      ((< nn 204)(setq str "gra-R-frontal"))
+    )
+    (return str)
+))
+
+(setq *hns-meg* "/home/neurosurgery/lisp/hns_meg5")
+(if (G-widget "display" :quiet)
+  (GtDeleteWidget (G-widget "display"))
+  (XmjkDone)
+)
+
+(create-launch)
+
+
