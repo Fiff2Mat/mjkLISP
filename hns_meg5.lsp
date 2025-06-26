@@ -1,5 +1,6 @@
 ;; released by Akira Hashizume @ Hiroshima University Hospital
-;; on 2025 June 14th
+;; on 2025 June 26th
+;; This code requires three C-compiled files, delete_lowgof, read_bdip, and select_time.
 
 (defun add-arrows(form text labelname)
   (let ((wd 15)(arrow1)(arrow2)(label))
@@ -556,6 +557,29 @@
           ((= n 202)(return "EOG")))
 ))
 
+(defun control-panel-show()
+  (let ((W)(w));GtOrganizePanel
+    (setq W (list
+      '("file"     10  250) '("buf"      70  250) '("MEG"     130   70)
+      '("ssp"     190  130) '("MEG-fil" 250   70) '("meg"     370   70)
+      '("meg-sel" 430  190) '("disp000" 490  190) '("mag"     430  130)
+      '("gra"     430   70) '("win000"  490  130) '("000"     540  130)
+      '("mxwin"   540   10) '("mxvcp"   600   10) '("disp001" 490   70)
+      '("meg2"    430   10) '("mtx"     430  250) '("scan"    490  250)
+      '("fmul"    490  310) '("scan1"   550  310) '("EEG0"    130  370)
+      '("EEG1"    190  310) '("EEG2"    190  370) '("fsub"    250  310)
+      '("EEG-fil" 310  370) '("sel"     370  430) '("disp009" 430  430)
+      '("ECG"     190  430) '("ECG-fil" 310  430) '("EOG"     190  490)
+      '("EOG-fil" 310  490) '("fav"     190  370) '("s19"     250  370)
+      '("stat-mtx" 130  10) '("stat-dsp" 190  10) 
+      ))
+    (dolist (w W)
+      (when (G-widget (first w) :quiet)(progn
+        (set-resource (G-widget (first w))
+          :face-x (second w) :face-y (third w)))))
+    (manage *control-panel*)
+))
+
 (defun create-initial-source()
   (let ((w)(mtx)(n)(x)(y)(z)(kind)(ch)(CH nil))
     (setq mtx (make-random-matrix (+ 306 19 1 1)(* 1 10)))
@@ -704,7 +728,8 @@
       '("calculation of noise level" (calc-noise-level))
       '("time to selection" (memo-peak2selection 0))
       '("time + gap to selection" (memo-peak2selection 1))
-      '("build C-files (only 1st use)" (build)))
+      '("build C-files (only 1st use)" (build))
+      '("arrange Control Panel" (control-panel-show)))
 ))
 
 (defun create-pca()
@@ -847,7 +872,7 @@
 
 (defun EEGlead1() 
   (let ((n)(w)(chname))
-    (dolist (w (list "EEG1" "EEG2" "fsub"))
+    (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
       (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
     (require-widget :selector "EEG1")
     (require-widget :selector "EEG2")
@@ -881,7 +906,7 @@
 
 (defun EEGlead2()
   (let ((n)(w)(chname))
-    (dolist (w (list "EEG1" "EEG2" "fsub"))
+    (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
       (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
     (require-widget :selector "EEG1")
     (require-widget :selector "EEG2")
@@ -923,7 +948,7 @@
 
 (defun EEGlead3()
   (let ((n)(w)(chname))
-    (dolist (w (list "EEG1" "EEG2" "fsub"))
+    (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
       (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
     (require-widget :selector "EEG1")
     (if (= (get-property (G-widget "EEG0") 19 :kind) 202)
@@ -940,6 +965,45 @@
     (setq chname (list "Fp1-Oz" "F3-Oz" "C3-Oz" "P3-Oz" "O1-Oz" "F7-Oz" "T3-Oz" "T5-Oz"
        "Fp2-Oz" "F4-Oz" "C4-Oz" "P4-Oz" "O2-Oz" "F8-Oz" "T4-Oz" "T6-Oz" 
        "Fz-Oz" "Cz-Oz" "Pz-OZ" "ECG" "EOG"))
+    (dotimes (n (resource (G-widget "sel") :channels))
+      (set-property (G-widget "sel") n :name (nth n chname)))  
+  
+  (setq w (G-widget "disp009"))   
+    (link (G-widget "sel")w)(GtOrganizePanel)
+    (set-resource w :point (read-from-string (XmTextGetString text-start)))
+    (set-resource w :length (read-from-string (XmTextGetString text-length)))
+    (change-eegscale)
+))
+
+(defun EEGlead4()
+  (let ((n)(w)(chname)(fav)(s19)(fsub))
+    (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
+      (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
+    (require-widget :selector "EEG1")
+    (if (= (get-property (G-widget "EEG0") 19 :kind) 202)
+      (select-to (G-widget "EEG1")(EEG0 0 3 8 13 17 2 7 12 1 5 10 15 18 6 11 16 4 9 14))
+      (select-to (G-widget "EEG1")(EEG0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18)))
+    (select-to (G-widget "ECG")(EEG0 19))    
+    (select-to (G-widget "EOG")(EEG0 20))
+    (set-property (G-widget "ECG") 0 :kind 402)
+    (set-property (G-widget "EOG") 0 :kind 202)
+    (unless (G-widget "fav" :quiet)
+      (setq fav (require-widget :vecop "fav" '("mode" "average"))))
+    (link (G-widget "EEG1") fav)
+    (unless (G-widget "s19" :quiet)
+      (setq s19 (require-widget :selector "s19")))
+    (select-to 's19 (fav 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+    (unless (G-widget "fsub" :quiet)
+      (setq fsub (require-widget :binary "fsub" '("function" fsub))))
+    (link (G-widget "EEG1") fsub)
+    (link s19 fsub)
+    (link (G-widget fsub)(G-widget "EEG-fil"))
+    (link (G-widget "ECG")(G-widget "ECG-fil"))
+    (link (G-widget "EOG")(G-widget "EOG-fil"))
+    (select-to (G-widget "sel")(EEG-fil 0 - 18)(ECG-fil 0)(EOG-fil 0))
+    (setq chname (list "Fp1-av" "F3-av" "C3-av" "P3-av" "O1-av" "F7-av" "T3-av" "T5-av"
+       "Fp2-av" "F4-av" "C4-av" "P4-av" "O2-av" "F8-av" "T4-av" "T6-av" 
+       "Fz-av" "Cz-av" "Pz-av" "ECG" "EOG"))
     (dotimes (n (resource (G-widget "sel") :channels))
       (set-property (G-widget "sel") n :name (nth n chname)))  
     (setq w (G-widget "disp009"))   
@@ -987,7 +1051,7 @@
 ))
 
 (defun findmax000core()
-  (let ((ww)(w0)(mw)(mv)(t0)(t1)(span0)(mtx)(val)(n)(ch))
+  (let ((ww)(w0)(mw)(mv)(t0)(t1)(span0)(mtx)(chx)(val)(n)(ch)(L))
     (setq ww (G-widget "win000") w0 (G-widget "000"))
     (setq span (resource w0 :selection-length))
     (if (<= span 0.0)(return nil)(progn
@@ -997,12 +1061,24 @@
       (link ww mw)
       (set-resource mw :point t1 :end span)
       (set-resource mv :mode "abs-max")
-      (link mw mv)
       (setq mtx (get-data-matrix mv 0 (resource mv :high-bound)))
-      (setq val (max-vector (row 0 mtx)))
-      (setq n (round (second val)))
-      (setq ch (vref (row 1 mtx) n))
-      (return (list (first val) (round ch) n))))
+      (setq chx (row 1 mtx)); max channel
+      (setq mtx (row 0 mtx)); max value
+      (if (= prepeak 100)(progn
+        (setq val (max-vector mtx))
+        (setq n (round (second val)));smp
+        (setq ch (vref chx n))
+        (setq L (list (first val) (round ch) n)))
+      (progn
+        (setq prepeak (read-from-string (XmTextGetString text-prepeak)))
+        (if (or (>= prepeak 100)(< prepeak 50))(setq prepeak 80))
+        (XmTextSetString text-prepeak (format nil "~0,0f" prepeak))
+        (setq L (max-vector-pre mtx prepeak))
+        (setq val (second L))
+        (setq n (round (first L)))
+        (setq ch (vref chx n))
+        (setq L (list val (round ch) n))))
+      (return L)))
 ))
 
 (defun fit000()
@@ -1014,7 +1090,8 @@
         ((= gramag 204)(setq w (G-widget "gra")))
         ((= gramag 102)(setq w (G-widget "mag")))
     )
-    (setq LL (findmax000core))
+    (setq LL (findmax000core)); max-val, ch, smp, pre-smp, pre-max-val
+    (print LL)
     (if LL (progn    
       (setq t0 (resource w1 :selection-start))
       (setq span (resource w1 :selection-length))
@@ -1164,6 +1241,7 @@
     (setframe001)
     (setq frame002 (make-frame form000 "frame002"
       :leftAttachment  XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :topAttachment   XmATTACH_WIDGET :topWidget frame001
       :rightAttachment XmATTACH_FORM :height 60 :shadowThickness 0))
     (manage frame002)
     (setframe002)
@@ -1562,6 +1640,22 @@
           (if (= (vref vec n) 1)
             (throw 'exit (setq val1 n)))))))
     (return (list val (round val1)))
+))
+
+(defun max-vector-pre(vec pre);vec >0 ;under construction
+  (let ((n)(mx)(vec0)(vec1)(nn -1)(val))
+    (setq mx (second (matrix-extent vec)))
+    (setq vec0 (map-matrix vec #' threshold mx))
+    (setq vec1 (map-matrix vec #' threshold (* mx pre 0.01)))
+    (progn (catch 'exit
+      (dotimes (n (length vec1))
+        ;(print (list n nn (vref vec0 n)(vref vec1 n)))        
+        (if (= (vref vec1 n) 0.0)(setq nn -1)
+          (progn 
+            (if (= nn -1)(setq nn n))
+            (if (= (vref vec0 n) mx)
+              (throw 'exit (setq val nn))))))))
+    (return (list val (vref vec val)))
 ))
 
 (defun memo-check()
@@ -2107,6 +2201,21 @@
     (system "rm ls.txt")
 )) 
 
+(defun round10(v)
+  (let ((x)(y)(z)(zmax))
+    (setq x (floor (log10 v)))
+    (setq x (pow 10 x))
+    (setq y (/ v x))
+    (cond
+      ((< y 2)(setq z (* x 0.2)))
+      ((< y 5)(setq z (* x 0.5)))
+      ((< y 11)(setq z x))
+    )
+    (setq zmax (* (ceil (/ v z)) z))
+    (if (= zmax v)(setq zmax (+ zmax z)))
+    (return (list zmax z))
+))
+
 (defun routine1()
   (let ((span))
     (memo-dipclear)    ;clear all dipoles
@@ -2277,6 +2386,37 @@
       (setq x (second (matrix-extent (row 0 M))))
       (setq L (append L (list x))))
     (return (list L))
+))
+
+(defun scan-data-statistics()
+  (let ((mtx)(n)(x)(xx nil)(nch nil)(vcp0)(src)(dsp))
+    (setq nch (resource (G-widget "scan") :channels))
+    (setq mtx (resource (G-widget "mtx") :matrix))
+    (when (= nch 8)(progn
+      (unless (G-widget "vcp0p" :quiet)
+        (setq vcp0 (require-widget :vecop "vcp0" '("mode" "max"))))
+      (link (G-widget "mtx") vcp0)
+      (setq x (get-data-matrix vcp0 0 (resource vcp0 :high-bound)))
+      (GtDeleteWidget vcp0)
+      (setq x (map-matrix (row 0 x) #'* 1e+13))
+      (dotimes (n (length x))
+        (setq xx (append xx (list (vref x n)))))
+      (setq xx (reverse (sort xx)))
+      (setq mtx (matrix (list xx)))
+      (unless (G-widget "stat-mtx" :quiet)
+        (require-widget :matrix-source "stat-mtx"))
+      (unless (G-widget "stat-dsp" :quiet)
+        (require-widget :plotter "stat-dsp"))
+      (setq src (G-widget "stat-mtx"))
+      (setq dsp (G-widget "stat-dsp"))
+      (set-resource src :matrix mtx)
+      (link src dsp)
+      (set-resource dsp :offsets #m((1)))
+      (setq x (/ (first xx) 2))
+      (set-resource dsp :scales (matrix (list (list x))))
+      (set-resource dsp :point 0 :length 60 :tick-inteval 10)
+      (GtPopupEditor dsp)
+    ))
 ))
 
 (defun scan-plot(mtx step)
@@ -2497,6 +2637,7 @@
       '("banana leads" (EEGlead1))
       '("coronal leads" (EEGlead2))
       '("monopolar leads" (EEGlead3))
+      '("average leads" (EEGlead4))
       '("auto scale" (autoscale "EEG"))))
     (manage menubar); unnecessory (manage menu)
     (setq R (add-arrows form text3 ""))
@@ -2556,7 +2697,7 @@
 
 
 (defun setframe001-plot(form0)
-  (let ((form)(disp)(dispw)(label1)(btn)(form1)(arrow1)(arrow2)(arrow3)(arrow4)(n)(rb)(tb1)(tb2)(n)(rb1)(tb3)(tb4)(tb5))
+  (let ((form)(disp)(dispw)(label1)(btn)(form1)(arrow1)(arrow2)(arrow3)(arrow4)(n)(rb)(tb1)(tb2)(n)(rb1)(tb3)(tb4)(tb5)(rb2))
     (setq frame (make-frame form0 "frame" :topAttachment XmATTACH_FORM
       :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
       :bottomAttachment XmATTACH_FORM))
@@ -2566,9 +2707,27 @@
       :labelString (XmString "Gra 204ch")))
     (manage label1)
     (setq form (make-form frame "form" :height 250 :resize 0))
+    (setq rb2 (XmCreateRadioBox form "rb2" (X-arglist) 0))
+    (set-values rb2 :bottomAttachment XmATTACH_FORM :numColumns 2
+      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
+      :rightOffset 50)
+    (setq tb6 (XmCreateToggleButtonGadget rb2 "tb6" (X-arglist) 0))
+    (setq tb7 (XmCreateToggleButtonGadget rb2 "tb7" (X-arglist) 0))
+    (setq text-prepeak (make-text form "text-peak"
+      :bottomAttachment XmATTACH_FORM
+      :leftAttachment  XmATTACH_WIDGET :leftWidget rb2
+      :rightAttachment XmATTACH_FORM))
+    (XmTextSetString text-prepeak "80")
+    (set-values tb6 :labelString (XmString "peak") :set 1)
+    (set-values tb7 :labelString (XmString "pre %") :set 0)
+    (setq prepeak 100);global variant
+    (set-lisp-callback tb6 "valueChangedCallback" '(setq prepeak 100))
+    (set-lisp-callback tb7 "valueChangedCallback" '(setq prepeak 80))
+    (dolist (n (list rb2 tb6 tb7 text-prepeak))(manage n))
     (setq rb1 (XmCreateRadioBox form "rb1" (X-arglist) 0))
-    (set-values rb1 :bottomAttachment XmATTACH_FORM :numColumns 3
-      ;:bottomOffset 30
+    (set-values rb1 ;:bottomAttachment XmATTACH_FORM :numColumns 3
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget rb2
+      :numColumns 3
       :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM)
     (setq tb3 (XmCreateToggleButtonGadget rb1 "tb3" (X-arglist) 0))
     (setq tb4 (XmCreateToggleButtonGadget rb1 "tb4" (X-arglist) 0))
@@ -2832,13 +2991,14 @@
 ))
 
 (defun sync-select-hook(w)
-  (let ((n)(t0)(span)(disp)(win (G-widget "win000"))(plot (G-widget "000"))(nch)(t1))
+  (let ((n)(t0)(span)(disp)(win)(plot)(nch)(t1))
+    (setq win (G-widget "win000"))
+    (setq plot (G-widget "000"))
     (setq t0   (resource w :selection-start))
     (setq span (resource w :selection-length))
     (GtUnlinkWidget win);;necessary! important
     (set-resource win  :point t0 :end span)
     (set-resource plot :point t0 :length span)
-
     (dotimes (n 10)
       (setq disp (format nil "disp00~a" n))
       (if (G-widget disp :quiet)
@@ -2847,12 +3007,24 @@
     (setq nch (resource plot :channels))
     (link (G-widget "gra") win)
     (link win plot)
-    (set-resource plot :scales (make-matrix 204 1 (* (get-grascale) 2)))
+    (if (> span 0)(sync-select-scale))
+    ;(set-resource plot :scales (make-matrix 204 1 (* (get-grascale) 2)))
     ;(if (= (resource (G-widget "scan"):channels) 8)
     ;  (progn (setq t1 (+ t0 (/ span 2)))
     ;         (set-resource (G-widget "scan") :selection-start t1)
     ;         (set-resource (G-widget "scan") :selection-length 0.0)))
 )) 
+
+(defun sync-select-scale()
+  (let ((w)(d)(mtx)(x))
+    (setq w (G-widget "win000"))
+    (setq d (G-widget "000"))
+    (setq mtx (get-data-matrix w 
+      (resource w :low-bound)(resource w :high-bound)))
+    (setq x (matrix-extent mtx))
+    (setq x (max (abs (first x))(abs (second x))))
+    (set-resource d :scales (make-matrix 204 1 x))
+))
 
 (defun text-callback()
   (set-lisp-callback text-gra    "activateCallback" '(change-grascale))
