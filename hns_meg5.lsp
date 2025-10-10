@@ -1,10 +1,10 @@
 ;; released by Akira Hashizume @ Hiroshima University Hospital
 ;; on 2025 July 3rd
-;; revised on 2025 October 8th
+;; revised on 2025 October 10th
 ;; This code requires three C-compiled files, criteria_bdip, read_bdip, and select_time.
 
 (setq MEGsite 1 *hns-meg* "/home/neurosurgery/lisp/hns_meg5");1: Hiroshima University Hospital
-;(setq MEGsite 2 *hns_meg* "/home/neuromag/lisp/hns_meg5");2: Cleaveland Clinic Hospital
+;(setq MEGsite 2 *hns-meg* "/home/neuromag/lisp/hns_meg5");2: Cleaveland Clinic Hospital
 
 (defun add-arrows(form text labelname)
   (let ((wd 15)(arrow1)(arrow2)(label))
@@ -338,7 +338,7 @@
     (set-values gra204 :set 1)(set-values mag102 :set 0)
     (if (< (resource (G-widget "disp009") :channels) 3)
       (case MEGsite
-        (1 (EEGlead1))
+        (1 (EEGHiroshima 1))
         (2 (EEGCleaveland 1))
       ))
     (dotimes (n 10)
@@ -1060,140 +1060,104 @@
     (manage EEGmenubar))
 )
 
-(defun EEGlead1() 
-  (let ((n)(w)(chname))
+(defun EEGHiroshima(num)
+  (let ((n)(EEG0)(EEG1)(EEG2)(EEG-fil)(ECG)(ECG-fil)(EOG)(EOG-fil)(sel)(disp))
+    (setq EEG0 (G-widget "EEG0") EEG-fil (G-widget "EEG-fil"))
+    (setq ECG  (G-widget "ECG")  ECG-fil (G-widget "ECG-fil"))
+    (setq EOG  (G-widget "EOG")  EOG-fil (G-widget "EOG-fil"))
+    (setq sel  (G-widget "sel"))
+    (setq disp (G-widget "disp009"))
+
+    (if (= (get-property EEG0 19 :kind) 402); t-> Triux, nil->VectorView 2 EEG 202 EOG 402 ECG
+      (set-resource EEG0 :names '("EEG*" "ECG*" "EOG*"))
+      (set-resource EEG0 :names 
+        '("EEG[1 9 6 2 17 10 14 7 3 18 11 15 8 4 19 12 16 5 13]" "ECG*" "EOG*")))
     (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
       (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
-    (require-widget :selector "EEG1")
-    (require-widget :selector "EEG2")
-    (require-widget :binary "fsub" '("function" fsub))
-    (if (= (get-property (G-widget "EEG0") 19 :kind) 202)(progn
-      (select-to (G-widget "EEG1")(EEG0 0 2  7 12 0 3  8 13 4  9 1  5 10 15 1  6 11 16))
-      (select-to (G-widget "EEG2")(EEG0 2 7 12 17 3 8 13 17 9 14 5 10 15 18 6 11 16 18)))(progn
-      (select-to (G-widget "EEG1")(EEG0 0 5 6 7 0 1 2 3 16 17 8  9 10 11  8 13 14 15))
-      (select-to (G-widget "EEG2")(EEG0 5 6 7 4 1 2 3 4 17 18 9 10 11 12 13 14 15 12))))
-    (select-to (G-widget "ECG")(EEG0 19))    
-    (select-to (G-widget "EOG")(EEG0 20))
-    (set-property (G-widget "ECG") 0 :kind 402)
-    (set-property (G-widget "EOG") 0 :kind 202)
-    (link (G-widget "EEG1")(G-widget "fsub"))
-    (link (G-widget "EEG2")(G-widget "fsub"))
-    (link (G-widget "fsub")(G-widget "EEG-fil"))
-    (link (G-widget "ECG")(G-widget "ECG-fil"))
-    (link (G-widget "EOG")(G-widget "EOG-fil"))
-    (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG-fil 0)(EOG-fil 0))
-    (setq chname (list "Fp1-F7" "F7-T3" "T3-T5" "T5-O1" "Fp1-F3" "F3-C3" "C3-P3" "P3-O1" 
-      "Fz-Cz" "Cz-Fz" "Fp2-F4" "F4-C4" "C4-P4" "P4-O2" "Fp2-F8" "F8-T4" "T4-T6" "T6-O2" 
-      "ECG" "EOG"))
-    (dotimes (n (resource (G-widget "sel") :channels))
-      (set-property (G-widget "sel") n :name (nth n chname)))  
-    (setq w (G-widget "disp009"))   
-    (link (G-widget "sel")w)(GtOrganizePanel)
-    (set-resource w :point (read-from-string (XmTextGetString text-start)))
-    (set-resource w :length (read-from-string (XmTextGetString text-length)))
-    (change-eegscale)
+    (select-to ECG (EEG0 19))(link ECG EEG-fil)
+    (select-to EOG (EEG0 20))(link EOG EOG-fil)
+
+    (setq EEG1 (require-widget :selector "EEG1"))
+    (setq EEG2 (require-widget :selector "EEG2"))
+    (setq fsub (require-widget :binary "fsub" '("function" fsub)))  
+  (case num
+    (1 (progn (setq name ;;banana 18ch 
+       '("Fp1-F7" "F7-T3" "T3-T5" "T5-O1" 
+         "Fp1-F3" "F3-C3" "C3-P3" "P3-O1"
+         "Fz-Cz" "Cz-Fz"
+         "Fp2-F4" "F4-C4" "C4-P4" "P4-O2"
+         "Fp2-F8" "F8-T4" "T4-T6" "T6-O2"  "ECG" "EOG"))
+       (select-to EEG1 
+         (EEG0 0 2 7 12  0 3 8 13  4 9  1 5 10 15  1 6 11 16))
+       (select-to EEG2
+         (EEG0 2 7 12 17  3 8 13 17  9 14  5 10 15 18  6 11 16 18))
+       (link EEG1 fsub)(link EEG2 fsub)(link fsub EEG-fil) 
+       (select-to sel (EEG-fil 0 - 17)(ECG-fil 0)(EOG-fil 0)) ))
+    (2 (progn (setq name ;;transverse 18ch 
+       '("F7-Fp1" "Fp1-Fp2" "Fp2-F8"  
+         "F7-F3" "F3-Fz" "Fz-F4" "F4-F8"
+         "T3-C3" "C3-Cz" "Cz-C4" "C4-T4"
+         "T5-P3" "P3-Pz" "Pz-P4" "P4-T6"
+         "T5-O1" "O1-O2" "O2-T6" "ECG" "EOG"))
+       (select-to EEG1 
+         (EEG0 2 0 1  2 3 4 5  7 8 9 10  12 13 14 15  12 17 18))
+       (select-to EEG2
+         (EEG0 0 1 6  3 4 5 6  8 9 10 11  13 14 15 16  17 18 16))
+       (link EEG1 fsub)(link EEG2 fsub)(link fsub EEG-fil) 
+       (select-to sel (EEG-fil 0 - 17)(ECG-fil 0)(EOG-fil 0)) ))
+    (3 (progn (setq name ;;mono 19ch 
+       '("Fp1-Oz" "F3-Oz" "C3-Oz" "P3-Oz" "O1-Oz"
+         "F7-Oz" "T3-Oz" "T5-Oz" 
+         "Fz-Oz" "Cz-Oz" "Pz-Oz"
+         "Fp2-O2" "F4-Oz" "C4-Oz" "P4-Oz" "O2-Oz"
+         "F8-Oz" "T4-Oz" "T6-Oz"  "ECG" "EOG"))
+       (select-to EEG1 
+         (EEG0 0 3 8 13 17  2 7 12  16 17 18  1 5 10 15 18  6 11 16))
+       (GtDeleteWidget EEG2)(GtDeleteWidget fsub)
+       (link EEG1 EEG-fil) 
+       (select-to sel (EEG-fil 0 - 18)(ECG-fil 0)(EOG-fil 0)) ))
+    (4 (progn (setq name ;;average 19ch        
+        '("Fp1-av" "F3-av" "C3-av" "P3-av" "O1-av"
+         "F7-av" "T3-av" "T5-av" 
+         "Fz-av" "Cz-av" "Pz-av"
+         "Fp2-av" "F4-av" "C4-av" "P4-av" "O2-av"
+         "F8-av" "T4-av" "T6-av" "ECG" "EOG"))
+       (select-to EEG1 
+         (EEG0 0 3 8 13 17  2 7 12  16 17 18  1 5 10 15 18  6 11 16))
+       (require-widget :vecop "fav" '("mode" "average"))
+       (link EEG1 (G-widget "fav"))
+       (require-widget :selector "s19")
+       (select-to (G-widget "s19")
+         (fav 0 0 0 0 0  0 0 0  0 0 0  0 0 0 0 0  0 0 0)) 
+       (GtDeleteWidget EEG2)
+       (link EEG1 fsub)(link (G-widget "s19") fsub)(link fsub EEG-fil)
+       (select-to sel (EEG-fil 0 - 18)(ECG-fil 0)(EOG-fil 0)) ))
+  )
+  (dotimes (n (length name))
+    (set-property sel n :name (nth n name)))
+  (link sel disp)
+  (set-resource disp :point  (read-from-string (XmTextGetString text-start)))
+  (set-resource disp :length (read-from-string (XmTextGetString text-length)))
+  (change-eegscale)
 ))
 
-(defun EEGlead2()
-  (let ((n)(w)(chname))
-    (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
-      (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
-    (require-widget :selector "EEG1")
-    (require-widget :selector "EEG2")
-    (require-widget :binary "fsub" '("function" fsub))
-    (if (= (get-property (G-widget "EEG0") 19 :kind) 202)(progn
-      (select-to (G-widget "EEG1")(EEG0 2 0 1 2 3 4 5 7 8  9 10 12 13 14 15 12 17 18))
-      (select-to (G-widget "EEG2")(EEG0 0 1 6 3 4 5 6 8 9 10 11 13 14 15 16 17 18 16)))(progn
-      (select-to (G-widget "EEG1")(EEG0 5 0  8 5  1 16  9 6  2 17 10 7  3 18 11 7  4 12))
-      (select-to (G-widget "EEG2")(EEG0 0 8 13 1 16  9 13 2 17 10 14 3 18 11 15 4 12 15))))
-    (select-to (G-widget "ECG")(EEG0 19))    
-    (select-to (G-widget "EOG")(EEG0 20))
-    (set-property (G-widget "ECG") 0 :kind 402)
-    (set-property (G-widget "EOG") 0 :kind 202)
-    (link (G-widget "EEG1")(G-widget "fsub"))
-    (link (G-widget "EEG2")(G-widget "fsub"))
-    (link (G-widget "fsub")(G-widget "EEG-fil"))
-    (link (G-widget "ECG")(G-widget "ECG-fil"))
-    (link (G-widget "EOG")(G-widget "EOG-fil"))
-    (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG-fil 0)(EOG-fil 0))
-    (setq chname (list "F7-Fp1" "Fp1-Fp2" "Fp2-F8" "F7-F3" "F3-Fz" "Fz-F4" "F4-F8"
-      "T3-C3" "C3-Cz" "Cz-C4" "C4-T4" "T5-P3" "P3-Pz" "Pz-P4" "P4-T6" "T5-O1" "O1-O2" "O2-T6"
-      "ECG" "EOG"))
-    (dotimes (n (resource (G-widget "sel") :channels))
-      (set-property (G-widget "sel") n :name (nth n chname)))  
-    (setq w (G-widget "disp009"))   
-    (link (G-widget "sel")w)(GtOrganizePanel)
-    (set-resource w :point (read-from-string (XmTextGetString text-start)))
-    (set-resource w :length (read-from-string (XmTextGetString text-length)))
-    (change-eegscale)
-))
+(defun EEGHiroshimamenu()
+  (let ((menubar)(menu))
+    (XtDestroyWidget EEGmenubar)
+    (setq EEGmenubar (make-menu-bar EEGmenuform "menubar"
+      :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget text-eeg
+      :rightAttachment XmATTACH_WIDGET :rightWidget text-eeg
+      :leftAttachment XmATTACH_FORM :leftOffset 20
+      :detailShadowThickness 0 :shadowThickness 0))    
+    (setq menu (make-menu EEGmenubar "EEG   uV" nil :tear-off
+      '("banana leads"    (EEGHiroshima 1))
+      '("coronal leads"   (EEGHiroshima 2))
+      '("mono leads"      (EEGHiroshima 3))
+      '("average leads"   (EEGHiroshima 4))
+      '("auto scale" (autoscale "EEG"))))   
+    (manage EEGmenubar))
+)
 
-(defun EEGlead3()
-  (let ((n)(w)(chname))
-    (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
-      (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
-    (require-widget :selector "EEG1")
-    (if (= (get-property (G-widget "EEG0") 19 :kind) 202)
-      (select-to (G-widget "EEG1")(EEG0 0 3 8 13 17 2 7 12 1 5 10 15 18 6 11 16 4 9 14))
-      (select-to (G-widget "EEG1")(EEG0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18)))
-    (select-to (G-widget "ECG")(EEG0 19))    
-    (select-to (G-widget "EOG")(EEG0 20))
-    (set-property (G-widget "ECG") 0 :kind 402)
-    (set-property (G-widget "EOG") 0 :kind 202)
-    (link (G-widget "EEG1")(G-widget "EEG-fil"))
-    (link (G-widget "ECG")(G-widget "ECG-fil"))
-    (link (G-widget "EOG")(G-widget "EOG-fil"))
-    (select-to (G-widget "sel")(EEG-fil 0 - 18)(ECG-fil 0)(EOG-fil 0))
-    (setq chname (list "Fp1-Oz" "F3-Oz" "C3-Oz" "P3-Oz" "O1-Oz" "F7-Oz" "T3-Oz" "T5-Oz"
-       "Fp2-Oz" "F4-Oz" "C4-Oz" "P4-Oz" "O2-Oz" "F8-Oz" "T4-Oz" "T6-Oz" 
-       "Fz-Oz" "Cz-Oz" "Pz-OZ" "ECG" "EOG"))
-    (dotimes (n (resource (G-widget "sel") :channels))
-      (set-property (G-widget "sel") n :name (nth n chname)))  
-  
-  (setq w (G-widget "disp009"))   
-    (link (G-widget "sel")w)(GtOrganizePanel)
-    (set-resource w :point (read-from-string (XmTextGetString text-start)))
-    (set-resource w :length (read-from-string (XmTextGetString text-length)))
-    (change-eegscale)
-))
-
-(defun EEGlead4()
-  (let ((n)(w)(chname)(fav)(s19)(fsub))
-    (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
-      (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
-    (require-widget :selector "EEG1")
-    (if (= (get-property (G-widget "EEG0") 19 :kind) 202)
-      (select-to (G-widget "EEG1")(EEG0 0 3 8 13 17 2 7 12 1 5 10 15 18 6 11 16 4 9 14))
-      (select-to (G-widget "EEG1")(EEG0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18)))
-    (select-to (G-widget "ECG")(EEG0 19))    
-    (select-to (G-widget "EOG")(EEG0 20))
-    (set-property (G-widget "ECG") 0 :kind 402)
-    (set-property (G-widget "EOG") 0 :kind 202)
-    (unless (G-widget "fav" :quiet)
-      (setq fav (require-widget :vecop "fav" '("mode" "average"))))
-    (link (G-widget "EEG1") fav)
-    (unless (G-widget "s19" :quiet)
-      (setq s19 (require-widget :selector "s19")))
-    (select-to 's19 (fav 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-    (unless (G-widget "fsub" :quiet)
-      (setq fsub (require-widget :binary "fsub" '("function" fsub))))
-    (link (G-widget "EEG1") fsub)
-    (link s19 fsub)
-    (link (G-widget fsub)(G-widget "EEG-fil"))
-    (link (G-widget "ECG")(G-widget "ECG-fil"))
-    (link (G-widget "EOG")(G-widget "EOG-fil"))
-    (select-to (G-widget "sel")(EEG-fil 0 - 18)(ECG-fil 0)(EOG-fil 0))
-    (setq chname (list "Fp1-av" "F3-av" "C3-av" "P3-av" "O1-av" "F7-av" "T3-av" "T5-av"
-       "Fp2-av" "F4-av" "C4-av" "P4-av" "O2-av" "F8-av" "T4-av" "T6-av" 
-       "Fz-av" "Cz-av" "Pz-av" "ECG" "EOG"))
-    (dotimes (n (resource (G-widget "sel") :channels))
-      (set-property (G-widget "sel") n :name (nth n chname)))  
-    (setq w (G-widget "disp009"))   
-    (link (G-widget "sel")w)(GtOrganizePanel)
-    (set-resource w :point (read-from-string (XmTextGetString text-start)))
-    (set-resource w :length (read-from-string (XmTextGetString text-length)))
-    (change-eegscale)
-))
 
 (defun findmax001()
   (let ((w0)(w1)(w2)(w3)(mtx)(r1)(r2)(k))
@@ -1296,7 +1260,7 @@
 ))
 
 (defun fitcore(t0 span ch tmax)
-  (let ((w)(R))
+  (let ((w)(R)(t1)(t2))
     (cond 
       ((= gramag 306)(setq w (G-widget "meg")))
       ((= gramag 204)(setq w (G-widget "gra")))
@@ -1309,6 +1273,9 @@
     (xfit-transfer-data w (list t0 span))
     (setq ch (string-left-trim "MEG" ch))
     (xfit-command (format nil "samplech ~a" ch)) 
+    ;(setq t1 (- tmax -0.5))
+    ;(setq t2 (- tmax -0.1))
+    ;(xfit-command (format nil "baseline ~a ~a" t1 t2))
     (xfit-command (format nil "fit ~a" (* tmax 1000)))
 ))
 
@@ -1448,15 +1415,17 @@
     ;(kill-xfit)
     (change-grascale)
     (change-eegscale)
-    (EEGlead1)
+    (case MEGsite
+      (1 (progn (EEGHiroshimamenu)(EEGHiroshima 1)))
+      (2 (progn (EEGCleavelandmenu)(EEGCleaveland 1)))
+     )
     (link (G-widget "file")(G-widget "buf"))
+    (link (G-widget "EEG-fil")(G-widget "disp009"))
     (create-memos)
     (add-button *display-menu* "show memo" 
      '(if (XtIsManaged form-memo)(unmanage form-memo)(manage form-memo)))
     (unmanage form-memo)
-    (if (= MEGsite 2)(progn 
-      (EEGCleavelandmenu)
-      (EEGCleaveland 1)))
+
 ))
 
 (defun layout-meg(nn)
@@ -2772,7 +2741,10 @@
         (set-resource (G-widget disp):point t0 :length 10)
       )))
     (layout1gra)
-    (EEGlead1)
+    (case MEGsite
+      (1 (EEGHiroshima 1))
+      (2 (EEGCleaveland 1))
+    )
     (set-resource (G-widget "disp009") :ch-label-space 80)
     (add-sync)
 ))
