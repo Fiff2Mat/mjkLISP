@@ -1,6 +1,6 @@
 ;; released by Akira Hashizume @ Hiroshima University Hospital
 ;; on 2025 July 3rd
-;; revised on 2025 October 10th
+;; revised on 2025 October 15th
 ;; This code requires three C-compiled files, criteria_bdip, read_bdip, and select_time.
 
 (setq MEGsite 1 *hns-meg* "/home/neurosurgery/lisp/hns_meg5");1: Hiroshima University Hospital
@@ -459,7 +459,6 @@
   (let ((x))
     (setq x (read-from-string (XmTextGetString text-scan)))
     (setq x (* x 1e-13))
-    (setq x (* x 4)); offset -0.9 amp *2
     (set-resource (G-widget "scan") :scales
       (make-matrix 8 1 x))
 ))
@@ -710,16 +709,19 @@
 
 (defun create-memos-menu(bar)
   (let ((n)(btn)(menu))
-    (make-menu bar "file" nil 
-      '("load *-wave.txt" (memo-load))
-      '("save *-wave.txt" (memo-save))
-      '("load BDIP file" (memo-dipload))
-      '("save as BDIP file" (memo-dipsave))
-      '("save consecutive epochs as PNG file" (memo-save-png)))
-    (setq menu (make-menu bar "display" nil 
-      '("clear"       (memo-clear))
-      '("clear all"   (memo-clear-all))))
-      (make-menu menu "waves" nil :tear-off
+    (setq this (make-menu bar "file" nil))
+      (add-button this "load *-wave.txt"   '(memo-load))
+      (add-button this "save *-wave.txt"   '(memo-save))
+      (add-separator this)
+      (add-button this "load BDIP file"    '(memo-dipload))
+      (add-button this "save as BDIP file" '(memo-dipsave))
+      (add-separator this)
+      (add-button this "save consecutive epochs as PNG file" '(memo-save-png))
+    (setq this (make-menu bar "display" nil)) 
+      (add-button this "clear"     '(memo-clear))
+      (add-button this "clear all" '(memo-clear-all))
+      (add-separator this)
+      (make-menu this "waves" nil :tear-off
         '("discharge"   (memo-insert " discharge"))
         '("spike"       (memo-insert " spike"))
         '("polyspike"   (memo-insert " polyspike"))
@@ -729,32 +731,36 @@
         '("physiological activities" (memo-insert " physiological activities"))
         '("noise"       (memo-insert " noise"))
         '("???"         (memo-insert " ???")))
-      (make-menu menu "copy" nil
+      (make-menu this "copy" nil
         '("to memo1" (memo-copy 1))
         '("to memo2" (memo-copy 2))
         '("to memo3" (memo-copy 3)))
-      (make-menu menu "sort" nil
+      (make-menu this "sort" nil
         '("time"      (memo-sort 3))
         '("coil"      (memo-sort 2))
         '("amplitude" (memo-sort 4)))
-    (make-menu bar "dipoles" nil
-      '("clear all dipoles" (memo-dipclear))
-      '("consecutive fit" (memo-fitfit))
-      '("read dipoles" (memo-readbdip))
-      '("extract dipoles filled with criteria" (memo-dipselect))
-      '("extract dipoles with PNG" (memo-dipselect-png))
-      '("extract epoch with dipoes" (memo-extractepoch)))
+    (setq this (make-menu bar "dipoles" nil))
+      (add-button this "clear all dipoles" '(memo-dipclear))
+      (add-button this "consecutive fit" '(memo-fitfit))
+      (add-button this "read dipoles" '(memo-readbdip))
+      (add-separator this)
+      (add-button this "extract dipoles filled with criteria" '(memo-dipselect))
+      (add-button this "extract dipoles with PNG" '(memo-dipselect-png))
+      (add-button this "extract epoch with dipoes" '(memo-extractepoch))
     (make-menu bar "routine" nil
       '("fit fit > dipole filter > a*.png" (routine1))
       '("PNG filter > ep*.png" (routine2))
       '("ep*.png > a*.png" (rename-png "ep" "a")))
-    (setq menu (make-menu bar "miscellaneous" nil
-      '("noise level from baseline" (xfit-command "noise baseline"))
-      '("noise level from selected span" (calc-noise-level))
-      '("time to selection" (memo-peak2selection 0))
-      '("time + gap to selection" (memo-peak2selection 1))
-      '("build C-files (only 1st use)" (build))
-      '("arrange Control Panel" (control-panel-show))))
+    (setq this (make-menu bar "miscellaneous" nil))
+      (make-menu this "noise level" nil
+        '("from baseline" (xfit-command "noise baseline"))
+        '("from selected span" (calc-noise-level)))
+      (add-separator this)
+      (add-button this "time to selection" '(memo-peak2selection 0))
+      (add-button this "time + gap to selection" '(memo-peak2selection 1))
+      (add-separator this)
+      (add-button this "build C-files (only 1st use)" '(build))
+      (add-button this "arrange Control Panel" '(control-panel-show))
 ))
 
 (defun create-pca()
@@ -1049,16 +1055,17 @@
       :rightAttachment XmATTACH_WIDGET :rightWidget text-eeg
       :leftAttachment XmATTACH_FORM :leftOffset 20
       :detailShadowThickness 0 :shadowThickness 0))    
-    (setq menu (make-menu EEGmenubar "EEG   uV" nil :tear-off
-      '("EEG I banana1"    (EEGCleaveland 1))
-      '("EEG II mono1"     (EEGCleaveland 2))
-      '("EEG III banana2"  (EEGCleaveland 3))
-      '("EEG IV mono2"     (EEGCleaveland 4))
-      '("EEG V transverse" (EEGCleaveland 5))
-      '("EEG VI banana3"   (EEGCleaveland 6))
-      '("auto scale" (autoscale "EEG"))))   
-    (manage EEGmenubar))
-)
+    (setq this (make-menu EEGmenubar "EEG   uV" nil :tear-off))
+    (add-button this "EEG I banana1"    '(EEGCleaveland 1))
+    (add-button this "EEG II mono1"     '(EEGCleaveland 2))
+    (add-button this "EEG III banana2"  '(EEGCleaveland 3))
+    (add-button this "EEG IV mono2"     '(EEGCleaveland 4))
+    (add-button this "EEG V transverse" '(EEGCleaveland 5))
+    (add-button this "EEG VI banana3"   '(EEGCleaveland 6))
+    (add-separator this)
+    (add-button this "auto scale" '(autoscale "EEG"))   
+    (manage EEGmenubar)
+))
 
 (defun EEGHiroshima(num)
   (let ((n)(EEG0)(EEG1)(EEG2)(EEG-fil)(ECG)(ECG-fil)(EOG)(EOG-fil)(sel)(disp))
@@ -1141,7 +1148,7 @@
   (change-eegscale)
 ))
 
-(defun EEGHiroshimamenu()
+(defun EEGHiroshimamenu1()
   (let ((menubar)(menu))
     (XtDestroyWidget EEGmenubar)
     (setq EEGmenubar (make-menu-bar EEGmenuform "menubar"
@@ -1149,7 +1156,7 @@
       :rightAttachment XmATTACH_WIDGET :rightWidget text-eeg
       :leftAttachment XmATTACH_FORM :leftOffset 20
       :detailShadowThickness 0 :shadowThickness 0))    
-    (setq menu (make-menu EEGmenubar "EEG   uV" nil :tear-off
+    (setq menu0 (make-menu EEGmenubar "EEG   uV" nil :tear-off
       '("banana leads"    (EEGHiroshima 1))
       '("coronal leads"   (EEGHiroshima 2))
       '("mono leads"      (EEGHiroshima 3))
@@ -1158,7 +1165,23 @@
     (manage EEGmenubar))
 )
 
-
+(defun EEGHiroshimamenu()
+  (let ((menubar)(menu))
+    (XtDestroyWidget EEGmenubar)
+    (setq EEGmenubar (make-menu-bar EEGmenuform "menubar"
+      :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget text-eeg
+      :rightAttachment XmATTACH_WIDGET :rightWidget text-eeg
+      :leftAttachment XmATTACH_FORM :leftOffset 20
+      :detailShadowThickness 0 :shadowThickness 0))    
+    (setq this (make-menu EEGmenubar "EEG   uV" nil :tear-off))
+    (add-button this "banana leads"  '(EEGHiroshima 1))
+    (add-button this "coronal leads" '(EEGHiroshima 2))
+    (add-button this "mono leads"    '(EEGHiroshima 3))
+    (add-button this "average leads" '(EEGHiroshima 4))
+    (add-separator this)
+    (add-button this "auto scale"    '(autoscale "EEG")) 
+    (manage EEGmenubar))
+)
 (defun findmax001()
   (let ((w0)(w1)(w2)(w3)(mtx)(r1)(r2)(k))
     (setq w0 (G-widget "win000"))
@@ -2458,7 +2481,7 @@
     (return mtx)
 ))
 
-(defun scan-autoscale();;under construction
+(defun scan-autoscale();;upper part of the plotter is hidden by the scrollbar
   (let ((val)(w)(vmax)(vmin)(amp)(k))
     (setq w (G-widget "scan"))
     (setq val (matrix-extent (resource (G-widget "mtx") :matrix)))
@@ -2633,20 +2656,24 @@
     (set-resource w :point 0 :length x)
 ))
 
-(defun scan-select-hook(&optional (nn 0));0 scan 1 scan1
+(defun scan-select-hook(&optional (nn 0));0: scan 1:scan1
   (let ((w (G-widget "scan"))(b (G-widget "buf"))(t0)(span)(span2)(gap)(w1 nil))
     (if (G-widget "scan1" :quiet)(setq w1 (G-widget "scan1")))
-    (if (= nn 1)(progn
-      (setq t0   (resource w1 :selection-start))
-      (setq span (resource w1 :selection-length))
-      (set-resource w :selection-start  t0)
-      (set-resource w :selection-length span))
-    (progn
-      (setq t0   (resource w :selection-start))
-      (setq span (resource w :selection-length))
-      (if w1 (progn
-        (set-resource w1 :selection-start  t0)
-        (set-resource w1 :selection-length span)))))
+    (case nn
+      (1 (progn
+        (setq t0   (resource w1 :selection-start))
+        (setq span (resource w1 :selection-length))
+        (set-resource w :selection-start  t0)
+        (set-resource w :selection-length span)))
+      (0 (progn
+        (setq t0   (resource w :selection-start))
+        (setq span (resource w :selection-length))
+        (if w1
+          (if (/= t0 (resource w1 :selection-start))
+            (progn
+              (set-resource w1 :selection-start  t0)
+              (set-resource w1 :selection-length span))))))
+    )
     (setq span2 (read-from-string (XmTextGetString text-length)))
     (setq t0 (- (+ t0 (/ span 2))(/ span2 2)))
     (setq gap (* (resource b :low-bound)(resource b :x-scale)))
