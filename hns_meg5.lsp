@@ -1,10 +1,11 @@
 ;; released by Akira Hashizume @ Hiroshima University Hospital
 ;; on 2025 July 3rd
-;; revised on 2025 October 15th
+;; revised on 2025 October 30th
 ;; This code requires three C-compiled files, criteria_bdip, read_bdip, and select_time.
 
 (setq MEGsite 1 *hns-meg* "/home/neurosurgery/lisp/hns_meg5");1: Hiroshima University Hospital
-;(setq MEGsite 2 *hns-meg* "/home/neuromag/lisp/hns_meg5");2: Cleaveland Clinic Hospital
+;(setq MEGsite 2 *hns-meg* "/home/neuromag/lisp/hns_meg5");2: Cleaveland 10-10 rule
+;(setq MEGsite 3 *hns-meg* "/home/neuromag/lisp/hns_meg5");3: Cleaveland 10-20 rule
 
 (defun add-arrows(form text labelname)
   (let ((wd 15)(arrow1)(arrow2)(label))
@@ -13,7 +14,7 @@
     (setq label  (XmCreateLabel       form "label"  (X-arglist) 0))
     (set-values text :rightOffset wd)
     (set-values arrow1 :leftAttachment XmATTACH_WIDGET :leftWidget text
-      :arrowDirection XmARROW_UP :width wd
+      :arrowDirection XmARROW_UP :width wda
       :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget text
       :shadowThickness 0 :detailShadowThickness 0
       :foreground (rgb 0 100 0))
@@ -340,6 +341,7 @@
       (case MEGsite
         (1 (EEGHiroshima 1))
         (2 (EEGCleaveland 1))
+        (3 (EEGCleaveland2 1))
       ))
     (dotimes (n 10)
       (setq disp (format nil "disp00~a" n))
@@ -908,7 +910,6 @@
     ((< num 1000)(format nil "disp~0,0d" num)) 
   )
 )
-
 (defun EEGCleaveland(num)
   (let ((n)(name))
     (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
@@ -916,8 +917,7 @@
     (require-widget :selector "EEG1")
     (require-widget :selector "EEG2")
     (require-widget :binary "fsub" '("function" fsub))
-    
-    (select-to (G-widget "ECG")(EEG0 59))
+    (select-to (G-widget "ECG")(EEG0 60))
     (set-property (G-widget "ECG") 0 :name "ECG")
     (case num
       (0 (progn (setq name '("Fp1" "Fpz" "Fp2" 
@@ -928,12 +928,12 @@
                       "TP9" "TP7" "CP5" "CP3" "CP4" "CP6" "TP8" "TP10"
                       "P7" "P5" "P3" "P1" "Pz" "P2" "P4" "P6" "P8"
                       "PO7" "PO3" "PO4" "PO8" 
-                      "O1" "Oz" "O2"))
-            (select-to (G-widget "EEG1")(EEG0 0 - 58))
+                      "O1" "Oz" "O2" "Iz"));; only 10-10 rules!
+            (select-to (G-widget "EEG1")(EEG0 0 - 59))
             (dotimes (n (length name))
               (set-property (G-widget "EEG1") n :name (nth n name)))
             (link (G-widget "EEG1")(G-widget "EEG-fil"))
-            (select-to (G-widget "sel")(EEG-fil 0 - 58)(ECG 0))
+            (select-to (G-widget "sel")(EEG-fil 0 - 59)(ECG 0))
             (link (G-widget "sel")(G-widget "disp009"))))
       (1 (progn (setq name 
          '("Fp1-F7" "F7-T7" "T7-P7" "P7-O1" "Fp2-F8" "F8-T8" "T8-P8" "P8-O2" 
@@ -951,9 +951,9 @@
          (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG 0))
          (link (G-widget "sel")(G-widget "disp009"))))
       (2 (progn (setq name 
-         '("Fp1-TP9" "F7-TP9" "T7-TP9" "P7-TP9" "Fp2-TP10" "F8-TP10" "T8-TP10" "P8-TP10"
-           "F3-TP9"  "C3-TP9" "P3-TP9" "O1-TP9" "F4-TP10"  "C4-TP10" "P4-TP10" "O2-TP10"
-           "Fz-TP10" "Pz-TP10"));;18ch mono TP9/TP10
+           '("Fp1-TP9" "F7-TP9" "T7-TP9" "P7-TP9" "Fp2-TP10" "F8-TP10" "T8-TP10" "P8-TP10"
+             "F3-TP9"  "C3-TP9" "P3-TP9" "O1-TP9" "F4-TP10"  "C4-TP10" "P4-TP10" "O2-TP10"
+            "Fz-TP10" "Pz-TP10"));;18ch mono TP9/TP10
          (select-to (G-widget "EEG1")
            (EEG0 0 7 25 43  2 15 33 51  9 27 45 56  13 31 49 58  11 47))
          (select-to (G-widget "EEG2")
@@ -963,7 +963,6 @@
          (dotimes (n (length name))
            (set-property (G-widget "fsub") n :name (nth n name)))
          (link (G-widget "fsub")(G-widget "EEG-fil"))
-         (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG 0))
          (link (G-widget "sel")(G-widget "disp009"))))
       (3 (progn (setq name 
          '("Fp1-F7" "Fp2-F8" "F7-T7" "F8-T8" "T7-P7" "T8-P8" "P7-O1" "P8-O2" 
@@ -981,7 +980,7 @@
          (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG 0))
          (link (G-widget "sel")(G-widget "disp009"))))
       (4 (progn (setq name 
-         '("Fpz-Cz" "Fp2-Cz" "F7-Cz" "F7-Cz" "T7-Cz" "T8-Cz" "P7-Cz" "P8-Cz"
+         '("Fpz-Cz" "Fp2-Cz" "F7-Cz" "F8-Cz" "T7-Cz" "T8-Cz" "P7-Cz" "P8-Cz"
            "F3-Cz" "F4-Cz" "C3-Cz" "C4-Cz" "P3-Cz" "P4-Cz" "O1-Cz" "O2-Cz"
            "TP9-Cz" "TP10-Cz"));;18ch mono Cz
          (select-to (G-widget "EEG1")
@@ -1028,6 +1027,113 @@
     )
 ))
 
+(defun EEGCleaveland2(num)
+  (let ((n)(name)(nch))
+    (dolist (w (list "EEG1" "EEG2" "fsub" "fav" "s19"))
+      (if (G-widget w :quiet)(GtDeleteWidget (G-widget w))))
+    (require-widget :selector "EEG1")
+    (require-widget :selector "EEG2")
+    (require-widget :binary "fsub" '("function" fsub))
+    (setq nch (resource (G-widget "EEG0") :channels))
+    (case nch
+      (22 (select-to (G-widget "ECG")(EEG0 21)))
+      (24 (select-to (G-widget "ECG")(EEG0 23)))
+    )
+    (set-property (G-widget "ECG") 0 :name "ECG")
+    (case num
+      (1 (progn (setq name 
+         '("Fp1-F7" "F7-T7" "T7-P7" "P7-O1" "Fp2-F8" "F8-T8" "T8-P8" "P8-O2" 
+           "Fp1-F3" "F3-C3" "C3-P3" "P3-O1" "Fp2-F4" "F4-C4" "C4-P4" "P4-O2"
+           "Fz-Cz"  "Cz-Pz"));; 18ch banana
+         (select-to (G-widget "EEG1")
+           (EEG0 0 2 7 12  1 6 11 16  0 3 8 13  1 5 10 15  4 9))
+         (select-to (G-widget "EEG2")
+           (EEG0 2 7 12 17  6 11 16 18  3 8 13 17  5 10 15 18  9 14))
+         (link (G-widget "EEG1")(G-widget "fsub"))
+         (link (G-widget "EEG2")(G-widget "fsub"))
+         (dotimes (n (length name))
+           (set-property (G-widget "fsub") n :name (nth n name)))
+         (link (G-widget "fsub")(G-widget "EEG-fil"))
+         (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG 0))
+         (link (G-widget "sel")(G-widget "disp009"))))
+      (2 (progn (setq name
+         '("Fp1-A1" "F7-A1" "T7-A1" "P7-A1" "Fp2-A2" "F8-A2" "T8-A2" "P8-A2"
+           "F3-A1"  "C3-A1" "P3-A1" "O1-A1" "F4-A2"  "C4-A2" "P4-A2" "O2-A2"
+           "Fz-A2" "Pz-A2"));;18ch mono A1/A2
+         (select-to (G-widget "EEG1")
+           (EEG0 0 2 7 12  1 6 11 16  3 8 13 17  5 10 15 18  4 14))
+         (select-to (G-widget "EEG2")
+           (EEG0 19 19 19 19  20 20 20 20  19 19 19 19  20 20 20 20  20 20))
+         (link (G-widget "EEG1")(G-widget "fsub"))
+         (link (G-widget "EEG2")(G-widget "fsub"))
+         (dotimes (n (length name))
+           (set-property (G-widget "fsub") n :name (nth n name)))
+         (link (G-widget "fsub")(G-widget "EEG-fil"))
+         (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG 0))
+         (link (G-widget "sel")(G-widget "disp009"))))
+      (3 (progn (setq name 
+         '("Fp1-F7" "Fp2-F8" "F7-T7" "F8-T8" "T7-P7" "T8-P8" "P7-O1" "P8-O2" 
+           "Fp1-F3" "Fp2-F4" "F3-C3" "F4-C4" "C3-P3" "C4-P4" "P3-O1" "P4-O2"
+           "Fz-Cz"  "Cz-Pz"));;18ch banana L-R-L-R
+         (select-to (G-widget "EEG1")
+           (EEG0 0 1 2 6  7 11 12 16  0 1 3 5   8 10 13 16  4 9)) 
+         (select-to (G-widget "EEG2")
+           (EEG0 2 6 7 11  12 16 17 18  3 5 8 10  13 15 17 18  9 14))
+         (link (G-widget "EEG1")(G-widget "fsub"))
+         (link (G-widget "EEG2")(G-widget "fsub"))
+         (dotimes (n (length name))
+           (set-property (G-widget "fsub") n :name (nth n name)))
+         (link (G-widget "fsub")(G-widget "EEG-fil"))
+         (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG 0))
+         (link (G-widget "sel")(G-widget "disp009"))))
+      (4 (progn (setq name 
+         '("Fpz-Cz" "Fp2-Cz" "F7-Cz" "F8-Cz" "T7-Cz" "T8-Cz" "P7-Cz" "P8-Cz"
+           "F3-Cz" "F4-Cz" "C3-Cz" "C4-Cz" "P3-Cz" "P4-Cz" "O1-Cz" "O2-Cz"
+           "A1-Cz" "A2-Cz"));;18ch mono Cz
+         (select-to (G-widget "EEG1")
+           (EEG0 0 1 2 6  7 11 12 16  3 5 8 10  13 15 17 18  19 20)) 
+         (select-to (G-widget "EEG2")
+           (EEG0 9 9 9 9  9 9 9 9  9 9 9 9  9 9 9 9  9 9))
+         (link (G-widget "EEG1")(G-widget "fsub"))
+         (link (G-widget "EEG2")(G-widget "fsub"))
+         (dotimes (n (length name))
+           (set-property (G-widget "fsub") n :name (nth n name)))
+         (link (G-widget "fsub")(G-widget "EEG-fil"))
+         (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG 0))
+         (link (G-widget "sel")(G-widget "disp009"))))
+      (5 (progn (setq name 
+         '("F7-F3" "F3-Fz" "Fz-F4" "F4-F8" "A1-T7" "T7-C3" "C3-Cz" "Cz-C4"
+           "C4-T8" "T8-A2" "P7-P3" "P3-Pz" "Pz-P4" "P4-P8" "Fp1-A1" "Fp2-A2"
+           "O1-A1" "O2-A2"));;18ch bipo transverse
+         (select-to (G-widget "EEG1")
+           (EEG0 2 3 4 5  19 7 8 9 10 11  12 13 14 15  0 1 17 18))
+         (select-to (G-widget "EEG2")
+           (EEG0 3 4 5 6  7 8 9 10 11 20  13 14 15 16  19 20 19 20))
+         (link (G-widget "EEG1")(G-widget "fsub"))
+         (link (G-widget "EEG2")(G-widget "fsub"))
+         (dotimes (n (length name))
+           (set-property (G-widget "fsub") n :name (nth n name)))
+         (link (G-widget "fsub")(G-widget "EEG-fil"))
+         (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG 0))
+         (link (G-widget "sel")(G-widget "disp009"))))      
+     (6 (progn (setq name 
+         '("Fp1-F7" "F7-FT9" "FT9-T7" "T7-P7" "P7-O1" "Fp2-F8" "F8-FT10" "FT10-T8" 
+           "T8-P8" "P8-O2" "FT9-FT10" "A1-A2" "Fp1-F3" "F3-C3" "C3-P3" "Fp2-F4"
+           "F4-C4" "C4-P4"));; 18ch    NR1/NR2 ... FT9/FT10 replaced
+         (select-to (G-widget "EEG1")
+           (EEG0 0 2 21 7 12  1 6 22 11 16  21 19  0 3 8  1 5 10))  
+         (select-to (G-widget "EEG2")
+           (EEG0 2 21 7 12 17  6 22 11 16 18  22 20  3 8 13  5 10 15))
+         (link (G-widget "EEG1")(G-widget "fsub"))
+         (link (G-widget "EEG2")(G-widget "fsub"))
+         (dotimes (n (length name))
+           (set-property (G-widget "fsub") n :name (nth n name)))
+         (link (G-widget "fsub")(G-widget "EEG-fil"))
+         (select-to (G-widget "sel")(EEG-fil 0 - 17)(ECG 0))
+         (link (G-widget "sel")(G-widget "disp009"))))  
+    )
+))
+
 (defun EEGCleavelanddummy();; for check of Cleaveland EEG using Hiroshima Univ EEG
   (let ((w1)(w2))
     (setq w1 (require-widget :pick "EEG00"))
@@ -1061,7 +1167,27 @@
     (add-button this "EEG III banana2"  '(EEGCleaveland 3))
     (add-button this "EEG IV mono2"     '(EEGCleaveland 4))
     (add-button this "EEG V transverse" '(EEGCleaveland 5))
-    (add-button this "EEG VI banana3"   '(EEGCleaveland 6))
+    (add-button this "EEG VI banana3"   '(EEGCleaveland 6))    
+    (add-separator this)
+    (add-button this "auto scale" '(autoscale "EEG"))   
+    (manage EEGmenubar)
+))
+
+(defun EEGCleavelandmenu2()
+  (let ((menubar)(menu))
+    (XtDestroyWidget EEGmenubar)
+    (setq EEGmenubar (make-menu-bar EEGmenuform "menubar"
+      :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget text-eeg
+      :rightAttachment XmATTACH_WIDGET :rightWidget text-eeg
+      :leftAttachment XmATTACH_FORM :leftOffset 20
+      :detailShadowThickness 0 :shadowThickness 0))    
+    (setq this (make-menu EEGmenubar "EEG   uV" nil :tear-off))
+    (add-button this "EEG I banana1"    '(EEGCleaveland2 1))
+    (add-button this "EEG II mono1"     '(EEGCleaveland2 2))
+    (add-button this "EEG III banana2"  '(EEGCleaveland2 3))
+    (add-button this "EEG IV mono2"     '(EEGCleaveland2 4))
+    (add-button this "EEG V transverse" '(EEGCleaveland2 5))
+    (add-button this "EEG VI banana3"   '(EEGCleaveland2 6))    
     (add-separator this)
     (add-button this "auto scale" '(autoscale "EEG"))   
     (manage EEGmenubar)
@@ -1440,7 +1566,8 @@
     (change-eegscale)
     (case MEGsite
       (1 (progn (EEGHiroshimamenu)(EEGHiroshima 1)))
-      (2 (progn (EEGCleavelandmenu)(EEGCleaveland 1)))
+      (2 (progn (EEGCleavelandmenu)(EEGCleaveland 1))); 10-10 rules
+      (3 (progn (EEGCleavelandmenu2)(EEGCleaveland2 1))); 10-20 rules
      )
     (link (G-widget "file")(G-widget "buf"))
     (link (G-widget "EEG-fil")(G-widget "disp009"))
