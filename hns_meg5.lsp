@@ -1,6 +1,6 @@
 ;; released by Akira Hashizume @ Hiroshima University Hospital
 ;; on 2025 July 3rd
-;; revised on 2025 November 13th
+;; revised on 2025 November 17th
 ;; This code requires three C-compiled files, criteria_bdip, read_bdip, and select_time.
 
 (setq MEGsite 1 *hns-meg* "/home/neurosurgery/lisp/hns_meg5");1: Hiroshima University Hospital
@@ -795,7 +795,7 @@
 (defun create-xfit()
   (let ((btn)(btn5)(n)(rb1)(tb1)(tb2)(tb3)(tb4)(rb2)(rb3)(rb4)(form1)(form2)(label1)(btn2))
     (setq form-xfit (make-form-dialog *application-shell* "form-xfit"
-      :autoUnmanage 0 :resize 1))
+      :autoUnmanage 0 :resize 1 :dialogStyle XmDIALOG_PRIMARY_APPLICATION_MODAL))
     (setq sns-num (make-text form-xfit "sns-num" :width 50 ;;global variant
       :topAttachment XmATTACH_FORM 
       :leftAttachment XmATTACH_FORM :leftOffset 220))
@@ -876,19 +876,16 @@
       :labelString (XmString "calc noise level from selected span")
       :topAttachment XmATTACH_WIDGET :topWidget rb4
       :leftAttachment XmATTACH_FORM :leftOffset 20))
+    (set-button-noedge btn2)
     (set-lisp-callback btn2 "activateCallback" '(calc-noise-level))
     (dolist (n (list text-granoise text-magnoise btn2))(manage n))
 
-    (setq btn (make-button form-xfit "btn" :labelString (XmString "evaluate & close")
+    (setq btn (make-button form-xfit "btn" 
+      :labelString (XmString "evaluate & close")
       :topAttachment XmATTACH_WIDGET :topWidget btn2 :topOffset 15
-      :leftAttachment XmATTACH_FORM :leftOffset 50))
+      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM))
     (set-lisp-callback btn "activateCallback" '(create-xfit-close))
-    (setq btn5 (make-button form-xfit "btn5" :labelString (XmString "delete")
-      :topAttachment XmATTACH_OPPOSITE_WIDGET :topWidget btn
-      :leftAttachment XmATTACH_WIDGET :leftWidget btn))
-    (set-lisp-callback btn5 "activateCallback" '(XtDestroyWidget form-xfit))
-    (dolist (n (list btn btn5 form-xfit))(manage n))
-    (unmanage btn5)
+    (dolist (n (list btn form-xfit))(manage n))
     (create-xfit-close)
 ))
 
@@ -3259,11 +3256,12 @@
     (setq btn-xfit (make-button form0 "xfit condition" :height (* 20 5)
       :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
       :bottomAttachment XmATTACH_FORM))
+    (set-button-noedge btn-xfit)
     (set-lisp-callback btn-xfit "activateCallback" '(manage form-xfit))
     (manage btn-xfit);;global variant
     (setq frame (make-frame form0 "frame" :topAttachment XmATTACH_FORM
       :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
-      :bottomAttachment XmATTACH_WIDGET :bottomWidget btn-xfit))
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget btn-xfit :bottomOffset 20))
     (set-values frame :height 250)
     (setq form (make-form frame "form"))
 
