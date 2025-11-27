@@ -1,6 +1,6 @@
 ;; released by Akira Hashizume @ Hiroshima University Hospital
 ;; on 2025 July 3rd
-;; revised on 2025 November 17th
+;; revised on 2025 November 27th
 ;; This code requires three C-compiled files, criteria_bdip, read_bdip, and select_time.
 
 (setq MEGsite 1 *hns-meg* "/home/neurosurgery/lisp/hns_meg5");1: Hiroshima University Hospital
@@ -321,7 +321,10 @@
         (set-property (G-widget "EOG") n :kind 202))
       (dotimes (n (resource (G-widget "EMG") :channels))
         (set-property (G-widget "EMG") n :kind 302))
-      (setq nn nlayout)))
+      (setq nn nlayout)
+      (XmTextSetString text-start "0.00")
+      (change-start)
+    ))
     (setq nlayout nn)
     (if (string-equal (resource (G-widget "disp001") :default-color) "white")
         (setq col 1)(setq col 2))
@@ -639,6 +642,7 @@
       :topAttachment   XmATTACH_FORM :leftAttachment   XmATTACH_FORM
       :rightAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM))
     (set-values btn :width 200 :height 100 :background (rgb 0 255 255))
+    
     (dolist (n (list btn form-launch))(manage n))
     (set-lisp-callback btn "activateCallback" '(initialize))
 ))
@@ -767,12 +771,12 @@
       '("fit fit > dipole filter > a*.png" (routine1))
       '("PNG filter > ep*.png" (routine2))
       '("ep*.png > a*.png" (rename-png "ep" "a")))
-    (setq this (make-menu bar "miscellaneous" nil))
-      (add-button this "time to selection" '(memo-peak2selection 0))
-      (add-button this "time + gap to selection" '(memo-peak2selection 1))
-      (add-separator this)
-      (add-button this "build C-files (only 1st use)" '(build))
-      (add-button this "arrange Control Panel" '(control-panel-show))
+    (setq this (make-menu bar "miscellaneous" nil
+      '("time to selection" (memo-peak2selection 0))
+      '("time + gap to selection" (memo-peak2selection 1))
+      :---- ;; add-separator
+      '("biuld C-files (only 1st use)" (build))
+      '("arrange Control Panel" (control-panel-show))))
 ))
 
 (defun create-pca()
@@ -807,8 +811,7 @@
     (set-values tb1 :labelString (XmString "use all 102") :set 1) 
     (setq tb2 (XmCreateToggleButtonGadget rb1 "tb2" (X-arglist) 0))
     (set-values tb2 :labelString (XmString "use nearest") :set 0)
-    (set-lisp-callback tb1 "valueChangedCallback" '(setq meg306 t))
-    (set-lisp-callback tb2 "valueChangedCallback" '(setq meg306 nil))
+    (setq tbmeg306 tb1 tbmeg30 tb2);;global standard
     (dolist (n (list sns-num tb1 tb2 rb1))(manage n))    
 
     (setq rb2 (XmCreateRadioBox form-xfit "rb2" (X-arglist) 0))
@@ -898,7 +901,7 @@
         (XmTextSetString text-prepeak text)
         (setq prepeak (read-from-string text))
         (setq st (format nil "ECD fit at~a% of peak~%" text))))  
-    (if meg306
+    (if (XmToggleButtonGetState tbmeg306)
       (setq st (str-append st (format nil "using all 102 sensors~%")))
       (progn
         (setq val (read-from-string (XmTextGetString sns-num)))
@@ -1500,7 +1503,6 @@
         (XmString (format nil "Gra ~0,1f ~~ ~0,1f(s)" t0 (+ t0 span))))
       (set-values fit-button   :labelString (XmString "to xfit"))
       ))
-    ;;Warning XmForm contracitory constrains of fit-button
 ))
 
 (defun findmax000core()
@@ -1552,7 +1554,7 @@
       (setq ch (get-property w1 (second LL) :name))
       (setq tm (* (third LL) (resource w0 :x-scale)))
       (setq tpeak (+ tm t0))
-      (if (not meg306)(progn
+      (if (XmToggleButtonGetState tbmeg30)(progn
         (link w (G-widget "meg2"))
         (set-near-coil ch)
         (setq w (G-widget "meg2"))))
@@ -1586,7 +1588,7 @@
       ((= gramag 204)(setq w (G-widget "gra")))
       ((= gramag 102)(setq w (G-widget "mag")))
     )
-    (unless meg306 (progn
+    (unless (XmToggleButtonGetState tbmeg306) (progn
       (link w (G-widget "meg2"))
       (set-near-coil ch)
       (setq w (G-widget "meg2"))))
@@ -1671,6 +1673,10 @@
 
 (defun get-grascale()(* (read-from-string (XmTextGetString text-gra)) 1e-13))
 
+(defun get-labelString(X-widget)
+  (return (XmString-to-string (get-XmString-resource X-widget "labelString")))
+)
+
 (defun get-magscale()(* (read-from-string (XmTextGetString text-mag)) 1e-15))
 
 (defun get-matrix-sum(mtx)
@@ -1695,6 +1701,19 @@
     )
    (return memo)
 ))
+
+(defun get-short-resource(X-widget X-args);;X-Args must be string
+  (let ((n)(k t))
+    (while k
+      (setq n (get-integer-resource X-widget X-args))
+      (if (and (>= n)(< n 32000))(setq k nil)))
+    (if (< n 0)(setq n (+ n 145096704)))
+    (return n)
+))
+
+(defun get-text-string(X-widget)
+  (return (get-string-resource X-widget "value"))
+)
 
 (defun initialize()
   (let ((n)(btn))
@@ -1754,6 +1773,8 @@
     (create-xfit)
     (add-button *display-menu* "show memo" 
      '(if (XtIsManaged form-memo)(unmanage form-memo)(manage form-memo)))
+    (add-separator *file-menu*)
+    (add-button *file-menu* "load online" '(online))
     (unmanage form-memo)
 
 ))
@@ -1766,6 +1787,7 @@
 
 (defun layout-routine();; delete disp00?
   (let ((n)(disp))
+    (if (G-widget "sel08" :quiet)(GtDeleteWidget (G-widget "sel08")))
     (XtDestroyWidget form002)
     (XtDestroyWidget form001)
     (gc)
@@ -1902,7 +1924,7 @@
     (set-values pane :separatorOn 0 :sasIndent -1 :resize 1
       :topAttachment XmATTACH_FORM  :bottomAttachment XmATTACH_FORM
       :leftAttachment XmATTACH_FORM :rightAttachment  XmATTACH_FORM
-      :paneMinimum 20); :paneMinimum is invalid!
+      :paneMinimum 20)
     (manage pane);; this must be here!
     (setq form1 (make-form pane "form1"))
     (setq form2 (make-form pane "form2"))
@@ -1919,8 +1941,6 @@
       (layout1gra)
       (change-megsel "gra-L-temporal")))
    (dolist (n (list form1 form2 form3))(manage n))
-   ;(set-values form2 :height 100)
-   ;(set-values form3 :height 100)
 ))
 
 (defun layout4()
@@ -2690,6 +2710,16 @@
       (memo-insert (format nil "~a~%" str)))
 ))
 
+(defun online()
+  (let ((filename)(dirname "/neuro/dacq/raw/*aw*")(check nil))
+    (setq filename (resource (G-widget "file") :filename))
+    (setq dirname "/neuro/dacq/raw/*raw*")
+    (if (not filename)(progn
+      (setq filename (ask-filename "Select raw* file to load" :template dirname))
+      (if filename (open-diskfile filename)))
+      (if (not (string-equal (filename-extension filename) "fif"))(open-diskfile filename)))
+))
+
 (defun open-diskfile2(&optional (filename :interactive)) 
   "replaced original open-disikfile 
   within /graph-2.94/commands/open-diskfile.lsp"
@@ -2806,6 +2836,9 @@
     (setq num (read-from-string (XmTextGetString text-peak)))
     (setq mtx (resource (G-widget "mtx") :matrix))
     (setq ncol (array-dimension mtx 1))
+    (if (= ncol 10)(progn
+      (error "Scan first!")
+      (return)))
     (setq xscale (resource (G-widget "mtx") :x-scale))
     (dotimes (n ncol)
       (setq x (column n mtx))
@@ -3108,7 +3141,8 @@
     (setq form (make-form frame001 "form"))
     (setq pane (XmCreatePanedWindow form "pane" (X-arglist) 0))
     (set-values pane :separatorOn 0 :sasIndent -1 :resize 1
-      :topAttachment  XmATTACH_FORM :bottomAttachment XmATTACH_FORM
+      :topAttachment  XmATTACH_FORM 
+      :bottomAttachment XmATTACH_FORM
       :leftAttachment XmATTACH_FORM :rightAttachment  XmATTACH_FORM)
     (setq form1 (make-form pane "form1"))
     (setq form2 (make-form pane "form2"))
@@ -3138,7 +3172,8 @@
     (XmTextSetString text-gra    "500")
     (XmTextSetString text-mag    "2500") 
     (XmTextSetString text-megfil "(band-pass 3 35)")
-    (XmTextSetString text-eeg    "60")
+    ;(XmTextSetString text-eeg    "60")
+    (set-values text-eeg :value "60")
     (XmTextSetString text-ecg    "300")
     (XmTextSetString text-eog    "100")
     (XmTextSetString text-emg    "500")
@@ -3250,78 +3285,65 @@
     (dolist (n R)(manage n))
 ))
 
+(defun setframe001-plot(form0)  
+  (let ((form)(disp)(dispw)(label1)(btn)(arrow1)(arrow2)(arrow3)(arrow4)(n))
+    (setq label1 (make-label form0 "label1" :topAttachment XmATTACH_FORM
+      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
+      :alignment XmALIGNMENT_BEGINNING
+      :labelString (XmString "Gra 204ch")))
+    (setq label-gra000 label1);;global variant    
+    (manage label1)
 
-(defun setframe001-plot(form0)
-  (let ((form)(disp)(dispw)(label1)(btn)(form1)(arrow1)(arrow2)(arrow3)(arrow4)(n)(rb)(tb1)(tb2)(n)(rb1)(tb3)(tb4)(tb5)(rb2))
     (setq btn-xfit (make-button form0 "xfit condition" :height (* 20 5)
       :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
       :bottomAttachment XmATTACH_FORM))
     (set-button-noedge btn-xfit)
     (set-lisp-callback btn-xfit "activateCallback" '(manage form-xfit))
     (manage btn-xfit);;global variant
-    (setq frame (make-frame form0 "frame" :topAttachment XmATTACH_FORM
-      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
-      :bottomAttachment XmATTACH_WIDGET :bottomWidget btn-xfit :bottomOffset 20))
-    (set-values frame :height 250)
-    (setq form (make-form frame "form"))
 
-    (setq label1 (make-label frame "label1" :childType XmFRAME_TITLE_CHILD
-      :labelString (XmString "Gra 204ch")))
-    (manage label1)
-    (setq form (make-form frame "form" :height 250 :resize 0))
-
-    (setq arrow1 (XmCreateArrowButton form "arrow1" (X-arglist) 0))   
-    (set-values arrow1 :leftAttachment XmATTACH_FORM 
-      :bottomAttachment XmATTACH_FORM
-      :arrowDirection XmARROW_UP :shadowTickness 0 
-      :detailShadowThickness 0 :width 15)
-    (setq arrow2 (XmCreateArrowButton form "arrow2" (X-arglist) 0))
-    (set-values arrow2 :leftAttachment XmATTACH_WIDGET :leftWidget arrow1 
-      :bottomAttachment XmATTACH_FORM
-      :arrowDirection XmARROW_DOWN :shadowThickness 0 
-      :detailShadowThickness 0 :width 15)
-    (setq arrow3 (XmCreateArrowButton form "arrow3" (X-arglist) 0))
-    (set-values arrow3 :leftAttachment XmATTACH_WIDGET :leftWidget arrow2 
-      :bottomAttachment XmATTACH_FORM
-      :arrowDirection XmARROW_LEFT :shadowThickness 0 
-      :detailShadowThickness 0 :width 15)
-    (setq arrow4 (XmCreateArrowButton form "arrow4" (X-arglist) 0))
-    (set-values arrow4 :leftAttachment XmATTACH_WIDGET :leftWidget arrow3 
-      :bottomAttachment XmATTACH_FORM
-      :arrowDirection XmARROW_RIGHT :shadowThickness 0 
-      :detailShadowThickness 0 :width 15)
-    (dolist (n (list arrow1 arrow2 arrow3 arrow4))
-      (set-values n :shadowThickness 0 :detaileShadowThickness 0
-       :foreground (rgb 0 100 0)))
+    (setq arrow1 (XmCreateArrowButton form0 "arrow1" (X-arglist) 0))   
+    (set-values arrow1 :leftAttachment XmATTACH_FORM
+      :arrowDirection XmARROW_UP)
+    (setq arrow2 (XmCreateArrowButton form0 "arrow2" (X-arglist) 0))   
+    (set-values arrow2 :leftAttachment XmATTACH_WIDGET 
+      :leftWidget arrow1 :arrowDirection XmARROW_DOWN) 
+    (setq arrow3 (XmCreateArrowButton form0 "arrow3" (X-arglist) 0))   
+    (set-values arrow3 :leftAttachment XmATTACH_WIDGET 
+     :leftWidget arrow2 :arrowDirection XmARROW_LEFT) 
+    (setq arrow4 (XmCreateArrowButton form0 "arrow4" (X-arglist) 0))   
+    (set-values arrow4 :leftAttachment XmATTACH_WIDGET 
+     :leftWidget arrow3 :arrowDirection XmARROW_RIGHT) 
     (set-lisp-callback arrow1 "activateCallback" '(change-grascale000 -1))
     (set-lisp-callback arrow2 "activateCallback" '(change-grascale000 1))
     (set-lisp-callback arrow3 "activateCallback" '(change-start000 -1))
     (set-lisp-callback arrow4 "activateCallback" '(change-start000 1))
-    (setq btn (make-button form "btn" :labelString (XmString "fit --")
-      :leftAttachment XmATTACH_WIDGET :leftWidget arrow4
-      :rightAttachment XmATTACH_FORM 
-      :bottomAttachment XmATTACH_FORM))
-    (dolist (n (list arrow1 arrow2 arrow3 arrow4 btn))
+    (dolist (n (list arrow1 arrow2 arrow3 arrow4))
+      (set-values n :bottomAttachment XmATTACH_WIDGET 
+        :bottomWidget btn-xfit :bottomOffset 20 :shadowTickness 0 
+        :detailShadowThickness 0 :width 15 :foreground (rgb 0 100 0))
       (manage n))
+    (setq btn (make-button form0 "btn" :labelString (XmString "fit --")
+      :leftAttachment XmATTACH_WIDGET :leftWidget arrow4
+      :rightAttachment XmATTACH_FORM  :bottomAttachment XmATTACH_WIDGET 
+      :bottomWidget btn-xfit :bottomOffset 20))
+    (set-lisp-callback btn "activateCallback" '(fit000))
+    (setq fit-button btn);global variant
+    (manage btn)
+
     (if (G-widget "000" :quiet)(GtDeleteWidget (G-widget "000")))
-    (setq disp (GtMakeObject 'plotter :name "000" :display-parent form 
-      :scroll-parent form :no-controls t))
+    (setq disp (GtMakeObject 'plotter :name "000" :display-parent form0 
+      :scroll-parent form0 :no-controls t))
     (put disp :display-form form)
     (GtPopupEditor disp)
     (setq dispw (resource (G-widget disp) :display-widget))
     (set-values dispw :resize 0
-      :topAttachment XmATTACH_FORM :bottomAttachment XmATTACH_WIDGET :bottomWidget arrow1
-      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM)
-    (manage form)(manage frame)
+      :topAttachment XmATTACH_WIDGET :topWidget label1
+      :bottomAttachment XmATTACH_WIDGET :bottomWidget arrow1
+      ;:bottomOffset -5
+      :leftAttachment XmATTACH_FORM :leftOffset -5 
+      :rightAttachment XmATTACH_FORM :rightOffset -5)
     (set-resource (G-widget "000") :superpose t :select-hook '(findmax000))
     (link (G-widget "win000")(G-widget "000"))
-    (set-values frame001 :width 200)
-    (set-lisp-callback btn "activateCallback" '(fit000))
-    (setq label-gra000 label1);global variant
-    (setq fit-button btn);global variant
-    (setq meg306 t);global variant
-    (set-values form :resize 0)
-    (set-values btn :resize 0)
     (setq form-plot form);global variant
 ))
 
@@ -3352,6 +3374,8 @@
     (setq text2 (make-text form "text2" :topAttachment XmATTACH_WIDGET 
       :topWidget label1  :rightAttachment XmATTACH_WIDGET 
       :rightWidget label3 :width 70))
+    (set-values text1 :alignment XmALIGNMENT_END)
+    (set-values text2 :alignment XmALIGNMENT_END)
     (dolist (n (list label1 btn btn1 text1 label2 label3 text2))(manage n))
     (setq text-start text1)  ;;global variant
     (setq text-length text2) ;;global variant
@@ -3446,6 +3470,10 @@
     (dolist (n (list label text1 text2 ar1 ar2 ar3 ar4 btn1 btn2 btn3 form))(manage n))))
 ))
 
+(defun setLabelString(label str)
+  (XtSetValues label (X-arglist :labelString (XmString str))1)
+)
+
 (defun setSSP()
   (let ((filename (resource (G-widget "file") :filename)))
     (if (not (string-equal (filename-extension filename) "fif"))
@@ -3529,11 +3557,6 @@
       (set-values label-gra000 :labelString 
         (XmString (format nil "Gra ~0,1f ~~ ~0,1f(s)" t0 (+ t0 span)))))
       (set-values label-gra000 :labelString (XmString "Gra 204ch")))
-    ;(set-resource plot :scales (make-matrix 204 1 (* (get-grascale) 2)))
-    ;(if (= (resource (G-widget "scan"):channels) 8)
-    ;  (progn (setq t1 (+ t0 (/ span 2)))
-    ;         (set-resource (G-widget "scan") :selection-start t1)
-    ;         (set-resource (G-widget "scan") :selection-length 0.0)))
 )) 
 
 (defun sync-select-scale()
@@ -3625,5 +3648,6 @@
 )
 
 (create-launch)
+
 
 
