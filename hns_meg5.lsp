@@ -1,6 +1,6 @@
 ;; released by Akira Hashizume @ Hiroshima University Hospital
 ;; on 2025 July 3rd
-;; revised on 2025 December 5th
+;; revised on 2025 December 15th
 ;; This code requires three C-compiled files, criteria_bdip, read_bdip, and select_time.
 
 (setq MEGsite 1 *hns-meg* "/home/neurosurgery/lisp/hns_meg5");1: Hiroshima University Hospital
@@ -1417,16 +1417,16 @@
 ))
 
 (defun EEGroutineNameFinish(name)
-  (let ((n)(sel (G-widget "sel"))(disp (G-widget "disp009"))(necg))
-    (if (= (length name)(resource (G-widget "EEG-fil") :channels))
-      (dotimes (n (length name))
-        (set-property (G-widget "EEG-fil") n :name (nth n name))))
-    (dotimes (n (resource (G-widget "ECG-fil") :channels))
-      (set-property (G-widget "ECG-fil") n :name (format nil "ECG~d" (1+ n))))
-    (dotimes (n (resource (G-widget "EOG-fil") :channels))
-      (set-property (G-widget "EOG-fil") n :name (format nil "EOG~d" (1+ n)))) 
-    (dotimes (n (resource (G-widget "EMG-fil") :channels))
-      (set-property (G-widget "EMG-fil") n :name (format nil "EMG~d" (1+ n))))
+  (let ((n)(nch)(nn)(w)(sel (G-widget "sel"))(disp (G-widget "disp009"))(necg))
+    (setq nch (resource (G-widget "EEG-fil") :channels))
+    (if (= (length name) nch)
+      (dotimes (n nch)(set-property (G-widget "EEG-fil") n :name (nth n name))))
+    (dolist (nn (list "ECG" "EOG" "EMG"))
+      (setq w (G-widget (format nil "~a-fil" nn)))
+      (setq nch (resource w :channels))
+      (if (= nch 1)(set-property w 0 :name nn))
+      (if (> nch 1)
+        (dotimes (n nch)(set-property w n :name (format nil "~a~d" nn (1+ n))))) )
     (link sel disp)
     (set-resource disp :point  (read-from-string (XmTextGetString text-start)))
     (set-resource disp :length (read-from-string (XmTextGetString text-length)))
@@ -1780,6 +1780,8 @@
      )
     (link (G-widget "file")(G-widget "buf"))
     (link (G-widget "EEG-fil")(G-widget "disp009"))
+    (link (G-widget "EEG-fil")(G-widget "win002"))
+    (link (G-widget "win002")(G-widget "002"))
     (create-memos)
     (create-xfit)
     (add-button *display-menu* "show memo" 
@@ -1787,7 +1789,6 @@
     (add-separator *file-menu*)
     (add-button *file-menu* "load online" '(online))
     (unmanage form-memo)
-
 ))
 
 (defun layout-meg(nn)
@@ -2087,23 +2088,37 @@
     (return R)
 ))
 
-(defun max-ch(Gw point end);Gw G-widget
+(defun max-ch(Gw point end);Gw G-widget mxvcp may have bugs!!
   (let ((win (G-widget "mxwin"))(vcp (G-widget "mxvcp"))
-    (mtx)(r1)(r2)(val)(n)(nn 0)(ch))
+    (mtx)(r1)(r2)(val)(n)(nn -1)(ch)(hb)(x))
     (link Gw win)
     (set-resource win :point point :start 0 :end end)
     (set-resource vcp :mode "abs-max")
+    (setq hb (resource win :high-bound))
+    (setq mtx (get-data-matrix win 0 hb))
+    (setq x (matrix-extent mtx))
+    (setq x (max (abs (first x))(second x)))
     (link win vcp)
     (setq mtx (get-data-matrix vcp 0 (resource vcp :high-bound)))
     (setq r1 (row 0 mtx))
     (setq val (second (matrix-extent r1)))
+    (unless (= val x)(setq val x));; to check of vcp-bug
     (setq r2 (row 1 mtx))
     (progn (catch 'exit
       (dotimes (n (length r1))
         (if (= val (vref r1 n))
           (throw 'exit (setq nn n))))))
+    (if (< nn 0)(print "something wrong!"))
     (setq ch (vref r2 nn))
+    
     (return (list val (round ch) nn))
+))
+
+
+(defun max-ch2(Gw point end)
+  (let ((mtx)(R)(n)(hb ))
+    (setq mtx (get-data-matrix Gw (x-to-sample Gw point)(x-to-sample Gw end)))
+    (return (max-matrix mtx))
 ))
 
 (defun max-gra(t0 span)
@@ -2469,7 +2484,10 @@
         (setq t0 (- (+ t1 (/ span1 2)) (/ span 2)))
         (set-resource w :point t0 :selection-start t1 :selection-length span1)
         (sync-move-hook w)
-        (sync-select-hook w)))))
+        (sync-select-hook w)
+        (set-resource (G-widget "000") :selection-start (- (fourth R) t1) 
+          :selection-length (sample-to-x (G-widget "000") 1))
+        (findmax000 "000")  ))))
 ))
 
 (defun memo-insert(str)
@@ -2530,10 +2548,12 @@
       (XmTextSetString memo str)))
 ))
 
-(defun memo-note()
+(defun memo-note1()
   (let ((mxt)(t0)(span)(T0)(Span)(w)(w1)(xscale)(mx)(str)(ch)(tmax))
     (setq w (G-widget "000"))
     (setq span (resource w :selection-length))
+    ;(if (= span -1.0)(setq span (resource w :length)))
+    (if (= span -1.0)(return nil))
     (if (> span 0.0)(progn
       (setq t0   (resource w :selection-start))
       (setq span (resource w :selection-length))
@@ -2553,6 +2573,27 @@
       (setq str (memo-line (list t0 span ch tmax mx)))
       (memo-insert (format nil "~%~a" str))))
 ))
+
+
+(defun memo-note()
+  (let ((ss)(sl)(R)(w)(t0)(val)(ch)(tm)(str))
+    (unless (> (resource (G-widget "disp009") :selection-length) 0)(return nil))
+    (setq w (G-widget "000"))
+    (if (= (resource w :channels) 0)(return nil))
+    (setq t0 (resource (G-widget "win000") :point))
+    (setq sl (resource w :selection-length))
+    (if (> sl 0.0)(setq ss (resource w :selection-start))
+      (setq sl (resource w :length) ss (resource w :point)))
+    (setq R (max-ch w ss sl))
+    (setq val (* (first R) 1e+13) 
+          ch  (get-property w (second R) :name)
+          tm  (sample-to-x w (third R)))
+    (setq t0 (+ t0 ss))
+    (setq tm (+ tm t0))
+    (setq str (memo-line (list t0  sl ch tm val)))
+    (memo-insert (format nil "~%~a" str))
+))
+
 
 (defun memo-paste(str);; slow!
   (let ((memo)(str0 nil)(str1 nil)(st)(line)(pos1)(pos2)(n)(strm))
@@ -2671,7 +2712,7 @@
         (print (format nil "~a has been saved." filename))))))
 ))
 
-(defun memo-save-png()
+(defun memo-save-png1()
   (let ((memo)(strm)(R)(N)(n)(sns)(t0)(span)(t1)(span1)(w)(id)(str)(col))
     (setq memo (get-memo))
     (setq strm (make-string-input-stream (XmTextGetString memo)))
@@ -2700,14 +2741,49 @@
           ;  (XmString (format nil "~a    ~0,0f fT/cm" sns (fifth R))))
           (XtSetValues label-gra000 (X-arglist "labelString"
              (XmString (format nil "~a    ~0,0f fT/cm" sns (fifth R)))) 1)
-          (set-values fit-button :labelString
-            (XmString (format nil "fit ~0,3f" (fourth R))))
           (sync-move-hook w)
           (sync-select-hook w)
+          (set-values fit-button :labelString
+            (XmString (format nil "fit ~0,3f" (fourth R))))   
           ;(set-resource (G-widget "000") 
           ;  :selection-start (- (fourth R) t0) 
           ;  :selection-length (sample-to-x (G-widget "000") 1))
           ;(findmax000 "000")
+          (setq str (format nil "~0,0f" (* (fourth R) 1000)))
+          (setq str (string-left-trim " " str));" 1234"->"1234"
+          (setq str (str-append "a" str))
+          (system (format nil "xwd -id ~a >~a.xwd" id str))
+          (system (format nil "convert ~a.xwd ~a.png" str str))
+          (system (format nil "rm ~a.xwd" str))  )))))    
+    (manage form-memo)
+    (system "xset b on")
+    (set-values label-gra000 :labelString (XmString "Gra 204ch"))
+    (set-values fit-button   :labelString (XmString "to xfit")) 
+    (if (string-equal col "white")(change-color 1))
+))
+
+(defun memo-save-png()
+  (let ((memo)(strm)(R)(N)(n)(sns)(t0)(span)(t1)(span1)(w)(id)(str)(col))
+    (setq memo (get-memo))
+    (setq strm (make-string-input-stream (XmTextGetString memo)))
+    (setq R (memo-getline))
+    (setq N (+ (second R) 1))
+    (setq w (G-widget "disp009"))
+    (setq span (resource w :length))
+    (setq id (window-id (XtWindow form000)))
+    (when (G-widget "disp009" :quiet)(setq col "white")
+      (setq col (resource (G-widget "disp009") :default-color)))
+    (change-color 2)
+    (unmanage form-memo)    
+    (system "rm a*.png")
+    (system "xset b off")
+    (dotimes (n N)
+      (setq R (read-line-as-list strm))
+      (when (> (length R) 4)(progn
+        (setq sns (format nil "~a" (third R)))
+        (unless (string-equal sns (string-trim "MEG" sns))(progn
+          (if (> nlayout 3)(change-megsel (which-gra8 sns)))
+
           (setq str (format nil "~0,0f" (* (fourth R) 1000)))
           (setq str (string-left-trim " " str));" 1234"->"1234"
           (setq str (str-append "a" str))
@@ -3245,7 +3321,8 @@
       :rightAttachment XmATTACH_FORM :rightOffset -5)
     (set-resource (G-widget "002") 
       :superpose t :select-hook '(findmax000 "002"))
-    (link (G-widget "win002")(G-widget "002"))
+    (link (G-widget "EEG-fil")(G-widget "win002"));; not executed?
+    (link (G-widget "win002")(G-widget "002"));; not executed?
 ))
 
 (defun setframe001-eeg(form)
@@ -3634,7 +3711,7 @@
   (let ((n)(t0)(span)(disp)(win)(plot)(win0)(win1)(win2)(plot0)(plot1)(plot2))
     (setq t0   (resource w :selection-start))
     (setq span (resource w :selection-length))
-    (dolist (win (list "000" "001" "002"))
+    (dolist (win (list "win000" "win001" "win002"))
       (GtUnlinkWidget (G-widget win)));;necessary! important!
     (dotimes (n 10)
       (setq disp (format nil "disp00~a" n))
@@ -3645,23 +3722,25 @@
     (set-values label-mag001 :labelString (XmString "MAG 102ch"))
     (set-values label-eeg002 :labelString (XmString 
       (format nil "EEG ~dch" (resource (G-widget "EEG-fil") :channels))))
-    (if (> span 0)(progn
-      (link (G-widget "gra")(G-widget "win000"))
-      (link (G-widget "mag")(G-widget "win001"))
-      (link (G-widget "EEG-fil")(G-widget "win002"))
-      (dolist (n (list "000" "001" "002"))
-        (setq win  (G-widget (format nil "win~a" n)))
-        (setq plot (G-widget n))
-        (set-resource win  :point t0 :start 0 :end span)
-        (set-resource plot :point t0 :length span)
-        (link win plot)
-        (sync-select-scale win plot))
-      (set-values label-gra000 :labelString 
-        (XmString (format nil "GRA ~0,1f ~~ ~0,1f(s)" t0 (+ t0 span))))
-      (set-values label-mag001 :labelString 
-        (XmString (format nil "MAG ~0,1f ~~ ~0,1f(s)" t0 (+ t0 span))))
-      (set-values label-eeg002 :labelString 
-        (XmString (format nil "EEG ~0,1f ~~ ~0,1f(s)" t0 (+ t0 span))))
+    (set-values fit-button :labelString (XmString "fit --"))
+    (if (<= span 0)(return nil))
+    (set-values fit-button :labelString (XmString "to xfit"))
+    (link (G-widget "gra")(G-widget "win000"))
+    (link (G-widget "mag")(G-widget "win001"))
+    (link (G-widget "EEG-fil")(G-widget "win002"))
+    (dolist (n (list "000" "001" "002"))
+      (setq win  (G-widget (format nil "win~a" n)))
+      (setq plot (G-widget n))
+      (set-resource win  :point t0 :start 0 :end span)
+      (set-resource plot :point t0 :length span)
+      (link win plot)
+      (sync-select-scale win plot))
+    (set-values label-gra000 :labelString 
+      (XmString (format nil "GRA ~0,3f ~~ ~0,3f(s)" t0 (+ t0 span))))
+    (set-values label-mag001 :labelString 
+      (XmString (format nil "MAG ~0,3f ~~ ~0,3f(s)" t0 (+ t0 span))))
+    (set-values label-eeg002 :labelString 
+      (XmString (format nil "EEG ~0,3f ~~ ~0,3f(s)" t0 (+ t0 span))))
    ))
  ))
 
@@ -3753,6 +3832,4 @@
 )
 
 (create-launch)
-
-
 
