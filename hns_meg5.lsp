@@ -1,6 +1,6 @@
 ;; released by Akira Hashizume @ Hiroshima University Hospital
 ;; on 2025 July 3rd
-;; revised on 2025 December 15th
+;; revised on 2025 December 18th
 ;; This code requires three C-compiled files, criteria_bdip, read_bdip, and select_time.
 
 (setq MEGsite 1 *hns-meg* "/home/neurosurgery/lisp/hns_meg5");1: Hiroshima University Hospital
@@ -658,7 +658,7 @@
 (defun create-memos()
   (let ((form)(btn1)(btn2)(pane)(n)(bar)(label1)(label2)(label3))
     (setq form (make-form-dialog *application-shell* "memos"
-      :autoUnmanage 0 :resize 1))
+      :autoUnmanage 0 :resizable 1))
     (setq bar (make-menu-bar form "bar" :autoUnmanage 0
       :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_FORM
       :rightAttachment XmATTACH_FORM))
@@ -1786,6 +1786,8 @@
     (create-xfit)
     (add-button *display-menu* "show memo" 
      '(if (XtIsManaged form-memo)(unmanage form-memo)(manage form-memo)))
+    (add-button *display-menu* "show fit condition" 
+     '(if (XtIsManaged form-xfit)(unmanage form-xfit)(manage form-xfit)))
     (add-separator *file-menu*)
     (add-button *file-menu* "load online" '(online))
     (unmanage form-memo)
@@ -3258,12 +3260,12 @@
       :topAttachment  XmATTACH_FORM 
       :bottomAttachment XmATTACH_FORM 
       :leftAttachment XmATTACH_FORM :rightAttachment  XmATTACH_FORM)
-    (setq form1 (make-form pane "form1"))
-    (setq form2 (make-form pane "form2"))
-    (setq form3 (make-form pane "form3"))
-    (setq form4 (make-form pane "form4"))
-    (setq form5 (make-form pane "form5"))
-    (setq form6 (make-form pane "form6"))
+    (setq form1 (make-form pane "form1")); Start & length
+    (setq form2 (make-form pane "form2")); MEG amp
+    (setq form3 (make-form pane "form3")); EEG amp
+    (setq form4 (make-form pane "form4")); EEG
+    (setq form5 (make-form pane "form5")); MAG
+    (setq form6 (make-form pane "form6")); GRA
 
     (dolist (n (list form1 form2 form3 form4 form5 form6 pane))(manage n))
     ; Start & length
@@ -3833,3 +3835,9 @@
 
 (create-launch)
 
+(defun package-symbol(pckg)
+  (let ((s)(ss nil))
+    (do-symbols (s (find-package pckg))
+      (setq ss (append ss (list s))))
+    (return ss)
+))
