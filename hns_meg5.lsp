@@ -1,6 +1,6 @@
 ;; released by Akira Hashizume @ Hiroshima University Hospital
 ;; on 2025 July 3rd
-;; revised on 2025 December 18th
+;; revised on 2025 December 22nd
 ;; This code requires three C-compiled files, criteria_bdip, read_bdip, and select_time.
 
 (setq MEGsite 1 *hns-meg* "/home/neurosurgery/lisp/hns_meg5");1: Hiroshima University Hospital
@@ -641,19 +641,6 @@
       (set-property w ch :kind kind))
       
 ))    
-
-(defun create-launch()
-  (let ((btn)(h))
-    (setq form-launch (make-form-dialog *application-shell* "form-launch" 
-     :autoUnmanage 0 :resize 1))
-    (setq btn (make-button form-launch "btn" :labelString (XmString "Launch")
-      :topAttachment   XmATTACH_FORM :leftAttachment   XmATTACH_FORM
-      :rightAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM))
-    (set-values btn :width 200 :height 100 :background (rgb 0 255 255))
-    
-    (dolist (n (list btn form-launch))(manage n))
-    (set-lisp-callback btn "activateCallback" '(initialize))
-))
 
 (defun create-memos()
   (let ((form)(btn1)(btn2)(pane)(n)(bar)(label1)(label2)(label3))
@@ -1727,7 +1714,10 @@
     (add-button *command-menu* "capture this widnow" '(screen-capture))
     (add-button *command-menu* "PCA" '(create-pca))
     ;(manage *control-panel*)
+    (set-resource (G-widget "display") :geometry "1000x800+50+50")
+    (GtDeleteWidget (G-widget "display"))
     (setq form000 (make-form *main-window* "form000"))
+    (set-values *main-window* :workWindow form000)
     (setq form001 (make-form form000 "form001" :topAttachment XmATTACH_FORM
       :leftAttachment  XmATTACH_FORM :bottomAttachment XmATTACH_FORM
       :rightAttachment XmATTACH_FORM :rightOffset 200 :bottomOffset 60))
@@ -1765,9 +1755,7 @@
     (link (G-widget "EEG-fil")(G-widget "disp009"))
     (require 'xfit)
     (xfit)
-    (XtDestroyWidget form-launch)
     (require *hns-meg*);; this calls second form-launch
-    (XtDestroyWidget form-launch)
     ;(xfit-command "origin head 0 0 40"); not recognized
     ;(kill-xfit)
 
@@ -3828,16 +3816,4 @@
     (return str)
 ))
 
-(if (G-widget "display" :quiet)
-  (GtDeleteWidget (G-widget "display"))
-  (XmjkDone)
-)
-
-(create-launch)
-
-(defun package-symbol(pckg)
-  (let ((s)(ss nil))
-    (do-symbols (s (find-package pckg))
-      (setq ss (append ss (list s))))
-    (return ss)
-))
+(if (= (length (GtAllWidgets)) 2)(initialize))
