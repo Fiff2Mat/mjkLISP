@@ -48,6 +48,16 @@
 (use-package "graph");; to use (G-widget...)
 (use-package "X")
 
+(defun calc-abs-average(mtx)
+  "(calc-abs-average #m((1 -2 3)(-4 5 -6)))>3.5"
+  (let ((xx)(elements)(func1))
+    (setq xx 0)
+    (defun func1(x)(setq xx (+ (abs x) xx)))
+    (nmap-matrix mtx 'func1)
+    (setq elements (apply #'* (array-dimensions mtx)))
+    (/ xx elements)
+))
+
 (defun check-channel()
   (let ((file)(n)(kind nil)(ch-class nil)(subfunc1)(chname))
     (defun chname(num)
@@ -83,7 +93,6 @@
       (setq kind     (cons (get-property file n :kind) kind))
       (setq ch-class (cons (get-property file n :ch-class) ch-class)) )
     (return (subfunc1 (reverse kind)))
-    ;(return (list (reverse kind)(reverse ch-class)))
 ))
 
 (defun change-lead1020(&optional (xx 20));;;not used
@@ -282,6 +291,34 @@
       (when (G-widget w :quiet)(GtDeleteWidget (G-widget w)))) 
 ))
 
+(defun get-max-matrix(mtx);;not used. get-max-matrix2 in hns_meg6 is faster!
+ "return max element
+  (get-max-matrix #m((1 -2 3)(-4 5 -6)))>(6.0 1 2)"
+  (let ((xx)(func1)(num)(rw))
+    (setq xx 0 num 0 maxnum 0)
+    (setq rw (array-dimension mtx 0))
+    (defun func1(x)
+      (if (> (abs x) xx)
+        (setq xx (abs x) maxnum num)
+        (setq xx xx maxnum maxnum))
+      (setq num (1+ num)) )
+    (map-matrix mtx 'func1)
+    (list xx (mod maxnum rw)(div maxnum rw))
+))
+
+(defun get-max-matrix0(mtx) ;not used
+ "return max element
+  (get-max-matrix #m((1 -2 3)(-4 5 -6))>6.0"
+  (let ((xx)(func1))
+    (setq xx 0)
+    (defun func1(x)
+      (if (> (abs x) xx)
+        (setq xx (abs x))
+        (setq xx xx) ));this code is indispensable!!
+    (nmap-matrix mtx 'func1)
+    xx
+))
+
 (defun initializeWidgets()
   (let ((w)(names)(n)(names))
     (deleteWidgets)
@@ -354,6 +391,15 @@
       (link (G-widget (nth n wlist))(G-widget (nth (1+ n) wlist))))
 ))
 
+(defun make-random-matrix0(row column);; does not work property!
+  (let ((R)(func1))
+    (defun func1()(/ (rand)(pow 2 31)))
+    (make-matrix (make-matrix row column 'func1))
+))
+
+(defun make-random-matrix(row column)
+  (/ (random-matrix row column) (pow 2 31)))
+
 (defun online()
   (let ((filename)(dirname "/neuro/dacq/raw/*aw*")(check nil))
     (setq filename (resource (G-widget "file") :filename))
@@ -401,8 +447,6 @@
      (system (format nil "rm ~a.xwd" str))
      (system "xset b on");;bell on
 ))
-;(setup-EEG eeg1-triuxneo)
-;(setup-EEG eeg1-vectorview)
 
 (defun setup-EEG(eeg1);eeg1-triuxneo eeg1-vectorview etc..
   (let ((n)(ch)(channels)(w)(nch)(kind)(name))
@@ -427,40 +471,3 @@
       (if (= nch 1)(set-property (G-widget ch) 0 :name ch)))
     (link (G-widget "EEG-fil")(G-widget "eeg"))
 ))
-
-(defun setup-EEG0(eeg1);eeg1-triuxneo eeg1-vectorview etc..
-  (let ((n)(ch)(ch1)(func1)(w)(kind)(str))
-    (defun func1(); MEG,EEG,STIM,..
-      (if (= (get-property (G-widget "buf") 0 :kind) 1)(progn
-      (link (G-widget "EEG")(G-widget "ECG"))
-      (link (G-widget "EEG")(G-widget "EOG"))
-      (link (G-widget "EEG")(G-widget "EMG")))))
-
-    (link (G-widget "buf")(G-widget "ECG"))
-    (link (G-widget "buf")(G-widget "EOG"))
-    (link (G-widget "buf")(G-widget "EMG"))
-    (setq w (G-widget "EEG"))
-    (setq str "(select-to w (EEG ")
-    (dotimes (n (length eeg1))
-      (setq ch (nth n eeg1))
-      (set-property w n :name ch)
-      (if (= (length ch)(length (string-left-trim "E" ch)))
-        (setq str (str-append (format nil "~a ~d" str n)))))
-    (setq str (str-append str "))"))
-    (setq w (G-widget "EEG-fil"))
-    (eval (read-from-string str))
-    (func1)
-    (dolist (w (list "ECG" "EOG" "EMG"))
-      (setq kind nil)
-      (cond
-        ((string-equal w "ECG")(setq kind 402))
-        ((string-equal w "EOG")(setq kind 202)) 
-        ((string-equal w "EMG")(setq kind 302))
-       )
-      (unless kind
-        (dotimes (n (resource w :channels))
-          (set-property (G-widget w) n :kind kind))))
-))
-
-
-
