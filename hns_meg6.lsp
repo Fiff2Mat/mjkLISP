@@ -5,6 +5,8 @@
 ;;
 (defuserparameter *hns-meg* "/home/neurosurgery/lisp/hns_meg6" 
  "fullname-extension" 'string 'misc-defaults)
+(defuserparameter tick-interval 1.0 "tick-interval of plotter"
+ 'number 'misc-defaults)
 (defvar text-start  nil "start")
 (defvar text-length nil "length")
 (defvar text-gra nil "scale of gradiometer")
@@ -30,7 +32,8 @@
     "About hns_meg6.lsp"
     ""
     "Released by Akira Hashizume, Hiroshima University Hospital"
-    "on 2026-March-23"
+    "on 2026-March-23,"
+    "revised on 2026-March-25"
     "This code is designed for MEG epilepsy analysis"
     ""
     "This program hns_meg6.lsp requires other 4 files,"
@@ -82,7 +85,7 @@
         (setq st1 (format nil "(sync-disp-move ~d)" (1+ n)))
         (setq st2 (format nil "(sync-disp-select ~d)" (1+ n)))
         (set-resource w
-          :tick-interval 1
+          :tick-interval tick-interval
           :point t0 :length span
           :x-unit "s"
           :move-hook (read-from-string st1)
@@ -284,12 +287,12 @@
         (when (equal ch (get-property disp 0 :ch-class))(progn
           (if (equal ch 'meg-planar)(progn
             (setq scale (read-from-string (XmTextGetString text-gra)))
-            (if (> nch 200)(setq scale (* scale 8)));GRA204
+            (if (> nch 200)(setq scale (* scale 10)));GRA204
             (setq mtx (make-matrix nch 1 (* scale 1e-13)))
             (set-resource disp :scales mtx)))
           (if (equal ch 'meg-magmeter)(progn
             (setq scale (read-from-string (XmTextGetString text-mag)))
-            (if (> nch 100)(setq scale (* scale 8)));MAG102
+            (if (> nch 100)(setq scale (* scale 10)));MAG102
             (setq mtx (make-matrix nch 1 (* scale 1e-15)))
             (set-resource disp :scales mtx)))
           (if (equal ch 'other)(progn
@@ -554,7 +557,8 @@
 ))
 
 (defun create-memos-add(formn frame)
-  (let ((btn1)(btn2)(btn3)(btn4)(label1)(label2)(label3)(func1))
+  (let ((btn1)(btn2)(btn3)(btn4)(label1)(label2)(label3)
+    (func1))
     (defun func1(btn)
       (set-values btn :background (rgb 245 245 245)))
     (defvar text-gof nil "GOF %")
@@ -665,7 +669,9 @@
     (add-button this "save BDIP file from XFIT" '(dipsave))
     (setq this (make-menu bar "epoch" nil))
     (add-button this "clear" '(memo-clear))
-    (add-button this "clear all" '(memo-clear-all))
+    (add-button this "clear all" '(memo-clear-all)) 
+    (add-button this "create epoch from BDIP" '(dipepoch))
+    (add-button this "extract epoch with dipoles" '(memo-extractepoch))
     (add-separator this)
     (make-menu this "waves" nil :tear-off
       '("discharge"   (memo-insert " discharge"))
@@ -708,93 +714,6 @@
       '("black/white line" (change-color 1)))
     (add-button this "build C-files (only 1st use)" '(buildC))
       ))
-))
-
-(defun create-menubar(ndisp)
-  (let ((form)(n)(dispname)(dispw)(menubar)(menu)(this)(ch)
-    (sch)(text)(func1)(func2))
-    (defun func1(dispname type)
-      (read-from-string (format nil "(create-menubar-channel '~a '~a)"
-        dispname type)))
-    (defun func2(form)
-      (let ((n)(text)(x)(xx))
-        (dotimes (n 10)
-          (setq text (format nil "disp~d-text" (1+ n)))
-          (setq x (XtNameToWidget form text))
-          (when x (XtDestroyWidget x))
-          (setq text (format nil "disp~d-menubar" (1+ n)))
-          (setq x (XtNameToWidget form text))
-          (when x (progn
-            (setq text (format nil "disp~d-menu---" (1+ n)))
-            (setq xx (XtNameToWidget x text))
-            (when xx (XtDestroyWidget xx))
-            (setq xx (XtNameToWidget x "menu"))
-            (when xx (XtDestroyWidget xx))
-            (XtDestroyWidget x))))
-        (gc)))
-    (setq form (XtNameToWidget frame001 "form"))
-    (func2 form)  
-    (dotimes (n ndisp)
-      (setq dispname (format nil "disp~d" (1+ n)))
-      (setq menubar (make-menu-bar form (format nil "~a-menubar" dispname)
-        :shadowThickness 0 :background (rgb 240 240 240)
-        :leftAttachment XmATTACH_POSITION
-        :leftPosition (round (* (/ 100 ndisp) n))
-        :topAttachment XmATTACH_FORM))
-      (setq menu (make-menu menubar "ch"))
-      (apply 'manage (list menu menubar)) 
-      (add-button menu "GRA204" (func1 dispname "GRA204"))
-      (add-button menu "MAG102" (func1 dispname "MAG102"))
-      (setq this (make-menu menu "gradiometers" nil)); :tear-off))
-      (dolist (ch (list "L-temporal" "R-temporal" "L-parietal" "R-parietal"
-        "L-occipital" "R-occipital" "L-frontal" "R-frontal"))
-        (setq sch (str-append "gra-" ch))
-        (add-button this sch (func1 dispname sch)))
-      (setq this (make-menu menu "magnetometer" nil)); :tear-off))
-      (dolist (ch (list "L-temporal" "R-temporal" "L-parietal" "R-parietal"
-        "L-occipital" "R-occipital" "L-frontal" "R-frontal"))
-        (setq sch (str-append "mag-" ch))
-        (add-button this sch (func1 dispname sch)))
-      (setq this (make-menu menu "EEG"  nil)); :tear-off))
-      (dolist (ch (list "banana1" "banana2" "transverse" "mono1" "mono2"
-        "average1" "average2"))
-        (add-button this ch (func1 dispname ch))) 
-      (setq text (make-textfield form (format nil "disp~d-text" (1+ n))
-        :topAttachment XmATTACH_FORM
-        :leftAttachment XmATTACH_WIDGET :leftWidget menubar
-        :shadowThickness 0 :background (rgb 224 224 224)
-        :editable 0 :width 200))
-      (XmTextSetString text (format nil "disp~d" (1+ n)))
-      (manage text) 
-    )
-))
-
-(defun create-menubar-channel(symdispname symstr);symbol
-  (let ((dispname)(str)(form)(form0)(bar)(menu)(text)(func1))
-    (defun func1(str strch)
-      (let ((x1)(x2))
-        (setq n (length str))
-        (setq x1 (length strch))
-        (setq x2 (length (string-left-trim str strch)))
-        (if (= (- x1 x2) (length str)) t nil) ))
-    (setq dispname (format nil "~a" symdispname))
-    (setq str (format nil "~a" symstr))
-    (setq form (XtNameToWidget frame001 "form"))
-    (setq form0 (XtNameToWidget form "form0"))
-    (setq text (XtNameToWidget form0 (str-append dispname "-text")))
-    (when text (XmTextSetString text str))
-    (unmanage form0)
-    (cond 
-      ((func1 "gra" str)(link2 str dispname))
-      ((func1 "mag" str)(link2 str dispname))
-      ((string-member str (list "banana1" "banana2" "banana3" "transverse"))
-        (link3 str dispname))
-      ((string-member str (list "mono1" "mono2" "average1" "average2"))
-        (link4 str dispname))
-      ((string-member str (list "GRA204" "MAG102"))
-        (link1 str dispname))
-    )
-    (manage form0)
 ))
 
 (defun create-noisemenu()
@@ -1843,9 +1762,9 @@
        :background (rgb 255 255 255))
 ))
 
-(defun memo-goto()
-  (let ((L)(t0)(span)(ch)(t1)(n)(disp)(w)(R)(scan)(x))
-    (setq L (XmjkLispListSelected (get-memop)))
+(defun memo-goto(&optional (L nil))
+  (let ((t0)(span)(ch)(t1)(n)(disp)(w)(R)(scan)(x))
+    (unless L (setq L (XmjkLispListSelected (get-memop))))
     (if (= (length L) 1)(progn
       (setq L (first L))
       (setq t0 (+ (first L)(/ (second L))) ch (third L))
@@ -1945,6 +1864,7 @@
       (read-line-as-list (make-string-input-stream str)))
     (setq str1 (func1 displabel))
     (setq str2 (string-right-trim "fT/cm" (func1 gralabel)))
+    (if (= (resource (G-widget "dispgra") :channels) 0)(return nil))
     (if (string-equal str1 "--")(return nil)(progn
       (setq L (func2 str1))
       (setq L (append (list (first L)(- (third L)(first L)))(func2 str2)))
@@ -1969,6 +1889,8 @@
     (XmjkLispListSet memo (reverse RR))
 ))
 
+
+
 (defun memo-pngsave()
   (let ((R)(D)(n)(tspan)(t0)(span)(t2)(w)(f)(dir)(id))
      ;(setq id (window-id (XtWindow (XtParent frame001))))
@@ -1982,17 +1904,8 @@
     (system (format nil "rm ~a/b*.png" dir))
     (system "xset b off"); bell off
     (dotimes (n (length R))
-      (setq L (nth n R))
-      (setq t0 (first L) span (second L))
-      (setq t2 (+ t0 (/ span 2)(/ tspan -2)))
-      (XmTextSetString text-start (format nil "~0,2f" t2))
-      (set-resource w :selection-start t0  :selection-length span)
-      (memo-pngsaveBDIP (fourth L)); dipole info
-      (sync-disp-select 1) 
-      (change-time)
-      (setq t2 (- t2 (sample-to-x w (resource (G-widget "buf") :low-bound))))
-      (set-resource (G-widget "scandisp") 
-        :selection-start t2 :selection-length tspan)
+      (setq L (nth n R)) 
+      (memo-goto (list L))
       (setq f (format nil "~0,0f" (* (fourth L) 1e+3)))
       (setq f (str-append dir "b" (string-trim " " f)))
       (system (format nil "xwd -id ~a > ~a.xwd" id f))
@@ -2001,7 +1914,6 @@
     (system "xset b on");bell on
     (manage form-memos)
     (memo-pngsaveBDIP)
-    (memo-pngsaveEEG nil)
 ))
 
 (defun memo-pngsaveBDIP(&optional (t00 nil))
@@ -2079,14 +1991,15 @@
         (if (string-equal str "gra")
           (setq amp (* (read-from-string (XmTextGetString text-gra))1e-13))
           (setq amp (* (read-from-string (XmTextGetString text-mag))1e-15)))
-        (set-resource disp :ch-label-space 0)
-        (set-resource disp :scales (make-matrix n 1 (* amp 8)))))
+        (set-resource disp :ch-label-space 0
+                           :scales (make-matrix n 1 (* amp 10)))))
 
     (define-MEGsite));Triux neo? VectorView? Cleaveland?
     (dotimes (n 11) 
       (setq dispname (format nil "disp~d" n))
       (if (G-widget dispname :quiet)(progn
         (setq disp (G-widget dispname))
+        (set-resource disp :tick-interval tick-interval)
         (setq label (second (get-disptext n)))
         (cond
           ((string-equal label "GRA204")(func1 "gra" disp))
@@ -2145,7 +2058,7 @@
 
 (defun scan-record(&optional (step 0.5));;under construction
   (let ((mtx)(s1)(s2)(s3)(s4)(s5)(s6)(s7)(s8)
-    (n)(tm)(tm2)(tmax)(w)(R)(smp)(T))
+    (n)(tm)(tm2)(tmax)(w)(R)(smp)(T)(chlist))
     (setq s1 (require-widget :selector "s1"))(select-to s1 (gra   0 -  25));26
     (setq s2 (require-widget :selector "s2"))(select-to s2 (gra  26 -  51));26
     (setq s3 (require-widget :selector "s3"))(select-to s3 (gra  52 -  77));26
@@ -2180,6 +2093,9 @@
     (setq R (transpose (matrix R)) tm (* (length R) step))
     (setq w (second (matrix-extent R)))(setq w (/ w 2))
     (set-resource (G-widget "MTX") :matrix R :x-unit "t" :x-scale step)
+    (setq chlist '("LT" "RT" "LP" "RP" "LO" "RO" "LF" "RF"))
+    (dotimes (n 8)
+      (set-property (G-widget "MTX") n :name (nth n chlist)))
     (link (G-widget "MTX")(G-widget "scandisp"))
     (set-resource (G-widget "scandisp") :point 0 :length tm
       :scales (make-matrix 8 1 w))
@@ -2207,6 +2123,9 @@
         (XmTextSetString (first (get-disptext (first R)))(second R))
         (link2 (second R)(format nil "disp~d" (first R)))
       ))
+      (set-resource (G-widget "disp1") :selection-start -1 
+                                       :selection-length -1)
+      (sync-disp-select 1)
       (change-time)))
 ))
 
@@ -2368,9 +2287,9 @@
       :bottomAttachment XmATTACH_OPPOSITE_WIDGET :bottomWidget text-scanscale
       :leftAttachment XmATTACH_WIDGET :leftWidget text-scanscale))
     (set-lisp-callback arU "activateCallback" 
-      '(change-scale-value text-scanscale -1))
+      '(change-scale-value text-scanscale 1))
     (set-lisp-callback arD "activateCallback" 
-      '(change-scale-value text-scanscale 1))  
+      '(change-scale-value text-scanscale -1))  
     (setq text-numpeak (make-textfield form "text-numpeak"
       :leftAttachment XmATTACH_WIDGET :leftWidget text-scanscale
       :leftOffset 40  :topAttachment  XmATTACH_FORM :width 40))
@@ -2875,12 +2794,17 @@
 ))
 
 (defun widenScan()
-  (let ((w (G-widget "scandisp")))
+  (let ((check)(w (G-widget "scandisp")))
     (apply 'unmanage (list frame001 frame002))
-    (if (resource w :superpose)
-      (set-values frame001 :bottomOffset 200) 
-      (set-values frame001 :bottomOffset 60))
-    (set-resource w :superpose (not (resource w :superpose)))
+    (setq check (resource w :superpose))
+    (if check (progn
+      (set-values frame001 :bottomOffset 200)
+      (set-resource w :superpose nil
+                      :ch-label-space 30))
+    (progn 
+      (set-values frame001 :bottomOffset 60)
+      (set-resource w :superpose t
+                      :ch-label-space 0)))
     (apply 'manage (list frame001 frame002))
 ))
 
