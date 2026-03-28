@@ -22,6 +22,7 @@
 (defvar labels4 nil "copy of disp- gra- mag- eeglabels")
 (defvar noisemenu nil "form of noise menu")
 (defvar near-coil nil "nearest coils")
+(defvar loadfiffname "" "loaded fiff file name")
 
 (load (format nil "~asetup-widgets.lsp" (filename-directory *hns-meg*)))
 (load (format nil "~asetup-eeg.lsp"     (filename-directory *hns-meg*)))
@@ -33,7 +34,7 @@
     ""
     "Released by Akira Hashizume, Hiroshima University Hospital"
     "on 2026-March-23,"
-    "revised on 2026-March-25"
+    "revised on 2026-March-28"
     "This code is designed for MEG epilepsy analysis"
     ""
     "This program hns_meg6.lsp requires other 4 files,"
@@ -464,7 +465,7 @@
           :topAttachment XmATTACH_POSITION :topPosition (* m 50)
           :leftAttachment XmATTACH_POSITION :leftPosition (* n 20)
           :shadowThickness 0 :background (rgb 240 240 240)))
-        (setq menu (make-menu bar "ch" nil :----))
+        (setq menu (make-menu bar "ch" nil :---- ))
         (apply 'manage (list menu bar))
         (func2 menu dispname)
         (setq text (make-textfield form0 (str-append dispname "-text")
@@ -521,19 +522,13 @@
       :rightAttachment XmATTACH_FORM)
     (dotimes (n 4)
       (setq formn (make-form pane (format nil "form~d" (1+ n))))
+      (setq label (create-memos-labelbtn n formn))
       (setq frame (make-frame formn (format nil "frame~d" (1+ n)) 
         :resize 1 :leftAttachment XmATTACH_FORM 
         :leftOffset (if (= n 3)0 15) :rightAttachment XmATTACH_FORM
-        :topAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM))
-      (if (< n 3)(setq str 
-        "  sec        span        sns          peak         fT/cm")
-      (progn
-        (create-memos-add formn frame)
-        (setq str (format nil 
-        "  sec ~t x ~t y ~t z ~t Qx ~t Qy ~t Qz ~t gof ~t cv ~t khi2"
-        10 20 30 40 50 60 70 80 90))))
-      (manage (make-label frame "label" :childType XmFRAME_TITLE_CHILD 
-        :labelString (XmString str)))
+        :topAttachment XmATTACH_WIDGET :topWidget label 
+        :bottomAttachment XmATTACH_FORM))
+      (if (= n 3)(create-memos-add formn frame))
       (if (< n 3)
         (setq memo (XmjkLispList frame (format nil "memo~d" (1+ n))
           'list-of-epoch :width 500 :height 100
@@ -557,101 +552,111 @@
 ))
 
 (defun create-memos-add(formn frame)
-  (let ((btn1)(btn2)(btn3)(btn4)(label1)(label2)(label3)
-    (func1))
+  (let ((btn1)(btn4)(btn5)(label1)(label2)(label3)
+    (func1)(func2)(func3)(func4))
     (defun func1(btn)
       (set-values btn :background (rgb 245 245 245)))
+    (defun func2(name title offset command)
+      (let ((btn))
+        (setq btn (make-button formn name :labelString (XmString title)
+          :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_FORM
+          :leftOffset offset :height 30 :width 50))
+        (set-lisp-callback btn "activateCallback" command)
+        (manage btn) (return btn) ))
+    (defun func3(name title Xw)
+      (let ((label))
+        (setq label (make-label formn name :labelString (XmString title)
+          :topAttachment  XmATTACH_FORM :topOffset 5
+          :leftAttachment XmATTACH_WIDGET :leftWidget Xw :leftOffset 5))
+        (manage label) (return label)  ))
+    (defun func4(name width Xw title)
+      (let ((text))
+        (setq text (make-textfield formn name
+          :topAttachment XmATTACH_FORM :width width 
+          :leftAttachment XmATTACH_WIDGET :leftWidget Xw))
+        (XmTextSetString text title)(manage text)(return text)  ))
     (defvar text-gof nil "GOF %")
     (defvar text-cf  nil "confidence volume")
     (defvar text-khi nil "khi^2")
-    (set-values frame :topOffset 30)
-    (setq btn1 (make-button formn "btn1" :labelString (XmString "reload")
-      :topAttachment XmATTACH_FORM :leftAttachment XmATTACH_FORM 
-      :height 30))
-    (setq btn2 (make-button formn "btn2" :labelString (XmString "delete")
-      :topAttachment XmATTACH_FORM :height 30
-      :leftAttachment XmATTACH_WIDGET :leftWidget btn1))
-    (setq btn3 (make-button formn "btn3" :labelString (XmString "filter")
-      :topAttachment XmATTACH_FORM :height 30
-      :leftAttachment XmATTACH_WIDGET :leftWidget btn2))
-    (setq label1 (make-label formn "label1" 
-      :labelString (XmString "GOF") :topAttachment XmATTACH_FORM 
-      :leftAttachment XmATTACH_WIDGET :leftWidget btn3 
-      :topOffset 5 :leftOffset 5))
-    (setq text-gof (make-text formn "text-gof"
-      :topAttachment XmATTACH_FORM :width 50
-      :leftAttachment XmATTACH_WIDGET :leftWidget label1))
-    (XmTextSetString text-gof "70")
-    (setq label2 (make-label formn "label2" 
-      :labelString (XmString "CV") :topAttachment XmATTACH_FORM
-      :leftAttachment XmATTACH_WIDGET :leftWidget text-gof
-      :topOffset 5 :leftOffset 5))
-    (setq text-cv (make-text formn "text-cv"
-      :topAttachment XmATTACH_FORM :width 50
-      :leftAttachment XmATTACH_WIDGET :leftWidget label2))
-    (XmTextSetString text-cv "-1")
-    (setq label3 (make-label formn "label3" 
-      :labelString (XmString "KHI2") :topAttachment XmATTACH_FORM
-      :leftAttachment XmATTACH_WIDGET :leftWidget text-cv 
-      :topOffset 5 :leftOffset 5))
-    (setq text-khi (make-text formn "text-khi"
-      :topAttachment XmATTACH_FORM :width 50
-      :leftAttachment XmATTACH_WIDGET :leftWidget label3))
-    (XmTextSetString text-khi "-1")
-    (setq btn4 (make-button formn "btn4" 
+    (setq btn1 (func2 "btn1" "reload" 0 '(dipdata)))
+    (func2 "btn2" "delete" 50 '(dipdelete))
+    (func2 "btn3" "extract" 100 '(dipdelete t))
+    (setq btn4 (func2 "btn4" "filter" 150 '(dipfilter)))
+    (setq label1 (func3 "label1" "gof" btn4))
+    (setq text-gof (func4 "text-gof" 40 label1 "70"))
+    (setq label2 (func3 "label2" "cv" text-gof))
+    (setq text-cv (func4 "text-cv" 40 label2 "-1"))
+    (setq label3 (func3 "label3" "khi2" text-cv))
+    (setq text-khi (func4 "text-khi" 60 label3 "-1"))
+    (setq btn5 (make-button formn "btn5" 
       :topAttachment XmATTACH_FORM :height 30
       :rightAttachment XmATTACH_FORM 
       :labelString (XmString "apply to xfit")))
-    (func1 btn1)(func1 btn4)
-    (apply #'manage (list btn1 btn2 btn3 label1 text-gof label2 
-      text-cv label3 text-khi btn4))
-    (set-lisp-callback btn1 "activateCallback" '(dipdata))
-    (set-lisp-callback btn2 "activateCallback" '(dipdelete))
-    (set-lisp-callback btn3 "activateCallback" '(dipfilter))
-    (set-lisp-callback btn4 "activateCallback" '(dipapply))
+    (func1 btn1)(func1 btn5)
+    (manage btn5)
+    (set-lisp-callback btn5 "activateCallback" '(dipapply))
 ))
 
 (defun create-memos-btns(form bar)
-  (let ((btn1)(btn2)(btn3)(btn4))
-    (setq btn1 (make-button form "btn1" :labelString (XmString "note")
-      :topAttachment XmATTACH_WIDGET :topWidget bar :height 30
-      :leftAttachment XmATTACH_FORM :width 50))
-    (setq btn2 (make-button form "btn2" :labelString (XmString "goto")
-      :topAttachment XmATTACH_WIDGET :topWidget bar :height 30
-      :leftAttachment XmATTACH_WIDGET :leftWidget btn1 :width 50))
-    (setq btn3 (make-button form "btn3" :labelString (XmString "fit")
-      :topAttachment XmATTACH_WIDGET :topWidget bar :height 30
-      :leftAttachment XmATTACH_WIDGET :leftWidget btn2 :width 50))
-    (setq btn4 (make-button form "btn4" :labelString (XmString "delete")
-      :topAttachment XmATTACH_WIDGET :topWidget bar :height 30
-      :leftAttachment XmATTACH_WIDGET :leftWidget btn3 :width 50))
-    (set-lisp-callback btn1 "activateCallback" '(memo-note))
-    (set-lisp-callback btn2 "activateCallback" '(memo-goto))
-    (set-lisp-callback btn3 "activateCallback" '(memo-fit))
-    (set-lisp-callback btn4 "activateCallback" '(memo-delete-epoch))
-    (setq label1 (make-label form "label1" :labelString (XmString "GOF")
-      :topAttachment XmATTACH_WIDGET :topWidget bar :topOffset 5
-      :leftAttachment XmATTACH_WIDGET :leftWidget btn4 :leftOffset 5))
-    (setq text1 (make-text form "text-gof" :width 50
-      :topAttachment XmATTACH_WIDGET :topWidget bar
-      :leftAttachment XmATTACH_WIDGET :leftWidget label1))
-    (XmTextSetString text1 "70")
-    (setq label2 (make-label form "label2" :labelString (XmString "CV")
-      :topAttachment XmATTACH_WIDGET :topWidget bar :topOffset 5
-      :leftAttachment XmATTACH_WIDGET :leftWidget text1 :leftOffset 5))
-    (setq text2 (make-text form "text-cv" :width 50
-      :topAttachment XmATTACH_WIDGET :topWidget bar 
-      :leftAttachment XmATTACH_WIDGET :leftWidget label2))
-    (XmTextSetString text2 "-1")
-    (setq label3 (make-label form "label3" :labelString (XmString "KHI2")
-      :topAttachment XmATTACH_WIDGET :topWidget bar :topOffset 5
-      :leftAttachment XmATTACH_WIDGET :leftWidget text2 :leftOffset 5))
-    (setq text3 (make-text form "text-khi2" :width 50
-      :topAttachment XmATTACH_WIDGET :topWidget bar
-      :leftAttachment XmATTACH_WIDGET :leftWidget label3))
-    (XmTextSetString text3 "-1")
-    (apply 'manage (list bar btn1 btn2 btn3 btn4))
+  (let ((btn1)(func1))
+    (defun func1(name title offset command)
+      (let ((btn))
+        (setq btn (make-button form name :labelString (XmString title)
+         :topAttachment XmATTACH_WIDGET :topWidget bar
+         :leftAttachment XmATTACH_FORM :leftOffset offset
+         :height 30 :width 50))
+        (set-lisp-callback btn "activateCallback" command)
+        (manage btn)(return btn) )) 
+    (manage bar)
+    (setq btn1 (func1 "btn1" "note" 0 '(memo-note)))
+    (func1 "btn2" "goto" 50 '(memo-goto))
+    (func1 "btn3" "fit" 100 '(memo-fit))
+    (func1 "btn4" "delete" 150 '(memo-delete-epoch nil))
+    (func1 "btn5" "extract" 200 '(memo-delete-epoch t))
+    (func1 "btn6" "PNG" 250 '(memo-pngsave 2))
     (return btn1)
+))
+
+(defun create-memos-labelbtn(n formn)
+  (let ((str)(offset)(label)(m)(btn1)(btn2)(btn3)(btn4)(func1))
+    (defun func1(formn name topoffset leftoffset width)
+      (let ((btn))
+        (setq btn (make-button formn name 
+          :foreground (rgb 0 0 255)
+          :shadowThickness 0 :detailShadowThickness 0
+          :topAttachment XmATTACH_FORM :topOffset topoffset
+          :leftAttachment XmATTACH_FORM :leftOffset leftoffset
+          :width width :labelString (XmString name)))))
+    (dolist (m (list btn1 btn2 btn3 btn4))(setq m nil))
+    (if (< n 3)
+      (setq offset 0 str (format nil "~t  sec ~t span" 10 20))
+      (setq offset 30 str (format nil 
+      "~t x ~t y ~t z ~t Qx ~t Qy ~t Qz"
+        18 30 40 48 55 65)))
+    (setq label (make-label formn "label"
+      :topAttachment XmATTACH_FORM :topOffset offset
+      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
+      :alignment XmALIGNMENT_BEGINNING :labelString (XmString str)))
+    (manage label)
+    (if (< n 3)(progn
+      (setq btn1 (func1 formn "sns" offset 150 40))
+      (setq btn2 (func1 formn "peak" offset 225 40))
+      (setq btn3 (func1 formn "fT/cm" offset 280 40))
+      (set-lisp-callback btn1 "activateCallback" '(memo-sort 2));coil
+      (set-lisp-callback btn2 "activateCallback" '(memo-sort 3));time
+      (set-lisp-callback btn3 "activateCallback" '(memo-sort 4));amp
+      )(progn
+      (setq btn1 (func1 formn "sec" offset 10 40))
+      (setq btn2 (func1 formn "gof" offset 333 40))
+      (setq btn3 (func1 formn "cv" offset 375 40))
+      (setq btn4 (func1 formn "khi2" offset 430 40))
+      (set-lisp-callback btn1 "activateCallback" '(dip-sort 0))
+      (set-lisp-callback btn2 "activateCallback" '(dip-sort 7))
+      (set-lisp-callback btn3 "activateCallback" '(dip-sort 8))
+      (set-lisp-callback btn4 "activateCallback" '(dip-sort 9))
+      ))   
+    (dolist (m (list btn1 btn2 btn3 btn4))(if m (manage m)))
+    (return label)
 ))
 
 (defun create-memos-menu(bar)
@@ -706,8 +711,9 @@
     (add-button this "extract epoch with dipoles" '(memo-extractepoch))
     (add-button this "extract dipoles with PNG file" '(dippng))
     (setq this (make-menu bar "routine" nil))
-    (add-button this "epochs > dipole > filter > PNG" '(routine 1))
-    (add-button this "PNG > epoch & dipole > BDIP" '(routine 2))
+    (add-button this "scan > epochs > dipole > filter > PNG" '(routine 1))
+    (add-button this "epochs > dipole > filter > PNG" '(routine 2))
+    (add-button this "PNG > epoch & dipole > BDIP" '(routine 3))
     (setq this (make-menu bar "miscellaneous" nil))
     (make-menu this "line color" nil
       '("colored line" (change-color 2))
@@ -912,15 +918,17 @@
     (system (format nil "rm ~a" loadname))
 ))
 
-(defun dipdelete()
+(defun dipdelete(&optional (check nil))
   (let ((R)(S)(L)(n)(m 0)(Z nil))
     (setq R (XmjkLispListGet memo4))
     (setq S (XmjkLispListSelected memo4))
-    (dotimes (n (length R))
-      (if (equal (nth m S)(nth n R))
-        (setq m (1+ m))
-        (setq Z (cons (nth n R) Z))))
-    (XmjkLispListSet memo4 (reverse Z))
+    (if (yes-or-no-p "Are you sure?") (progn
+      (if check (XmjkLispListSet memo4 S)(progn
+        (dotimes (n (length R))
+          (if (equal (nth m S)(nth n R))
+            (setq m (1+ m))
+            (setq Z (cons (nth n R) Z))))
+        (XmjkLispListSet memo4 (reverse Z)) ))))
 ))
 
 (defun dipepoch()
@@ -1625,7 +1633,7 @@
     (setq nemg (1- (resource (G-widget "EMG-fil") :channels)))
     (setq st (format nil 
       (format nil "(select-to sel (~a 0 - ~d)" wname neeg)))
-    (if (>= necg 0)
+    (if (>= necg 0);...btn3 cover btn2's func;...btn3 cover btn2's functiontion
       (setq st (str-append st (format nil "(ECG-fil 0 - ~d)" necg))))
     (if (>= neog 0)
       (setq st (str-append st (format nil "(EOG-fil 0 - ~d)" neog))))
@@ -1708,19 +1716,21 @@
   (XmjkLispListDelete (get-memop)))
 )
 
-(defun memo-delete-epoch()
+(defun memo-delete-epoch(&optional (extract nil))
   (let ((memo)(R1)(R2)(n)(m)(check)(L)(Z nil))
-    (setq memo (get-memop))
-    (setq R1 (XmjkLispListGet memo)) 
-    (setq R2 (XmjkLispListSelected memo))
-    (dotimes (n (length R1))
-      (setq L (nth n R1) check t)
-      (catch 'exit 
-        (dotimes (m (length R2))
-          (if (equal L (nth m R2))
-            (throw 'exit (setq check nil)))))
-      (if check (setq Z (cons L Z))))
-    (XmjkLispListSet memo (reverse Z))
+    (when (yes-or-no-p "Are you sure?")(progn
+      (setq memo (get-memop))
+      (setq R1 (XmjkLispListGet memo)) 
+      (setq R2 (XmjkLispListSelected memo))
+      (if extract (XmjkLispListSet memo R2)(progn
+        (dotimes (n (length R1))
+          (setq L (nth n R1) check t)
+          (catch 'exit 
+            (dotimes (m (length R2))
+              (if (equal L (nth m R2))
+                (throw 'exit (setq check nil)))))
+        (if check (setq Z (cons L Z))))
+      (XmjkLispListSet memo (reverse Z)))) ))
 ))
 
 (defun memo-extractepoch()
@@ -1889,31 +1899,31 @@
     (XmjkLispListSet memo (reverse RR))
 ))
 
-
-
-(defun memo-pngsave()
+(defun memo-pngsave(&optional (all 1))
   (let ((R)(D)(n)(tspan)(t0)(span)(t2)(w)(f)(dir)(id))
-     ;(setq id (window-id (XtWindow (XtParent frame001))))
-    (setq id (window-id (XtWindow (XtNameToWidget *main-window* "form000"))))
-    (setq R (XmjkLispListGet (get-memop)))
-    (setq D (XmjkLispListGet memo4))
-    (setq w (G-widget "disp1"))
-    (unmanage form-memos)
-    (setq tspan (read-from-string (XmTextGetString text-length)))
-    (setq dir (filename-directory (resource (G-widget "file") :filename)))
-    (system (format nil "rm ~a/b*.png" dir))
-    (system "xset b off"); bell off
-    (dotimes (n (length R))
-      (setq L (nth n R)) 
-      (memo-goto (list L))
-      (setq f (format nil "~0,0f" (* (fourth L) 1e+3)))
-      (setq f (str-append dir "b" (string-trim " " f)))
-      (system (format nil "xwd -id ~a > ~a.xwd" id f))
-      (system (format nil "convert ~a.xwd ~a.png" f f))
-      (system (format nil "rm ~a.xwd" f))  )
-    (system "xset b on");bell on
-    (manage form-memos)
-    (memo-pngsaveBDIP)
+    (when (yes-or-no-p "Do you want to save waveforms as PNG files?")(progn           ;(setq id (window-id (XtWindow (XtParent frame001))))
+      (setq id (window-id (XtWindow (XtNameToWidget *main-window* "form000"))))
+      (if (= all 1)(setq R (XmjkLispListGet (get-memop)))
+                   (setq R (XmjkLispListSelected (get-memop))))
+      (setq D (XmjkLispListGet memo4))
+      (info "The EEG peak is not shown because of MjkLISP bug!")
+      (setq w (G-widget "disp1"))
+      (unmanage form-memos)
+      (setq tspan (read-from-string (XmTextGetString text-length)))
+      (setq dir (filename-directory (resource (G-widget "file") :filename)))
+      (system (format nil "rm ~a/b*.png" dir))
+      (system "xset b off"); bell off
+      (dotimes (n (length R))
+        (setq L (nth n R)) 
+        (memo-goto (list L))
+        (setq f (format nil "~0,0f" (* (fourth L) 1e+3)))
+        (setq f (str-append dir "b" (string-trim " " f)))
+        (system (format nil "xwd -id ~a > ~a.xwd" id f))
+        (system (format nil "convert ~a.xwd ~a.png" f f))
+        (system (format nil "rm ~a.xwd" f))  )
+      (system "xset b on");bell on
+      (manage form-memos)
+      (memo-pngsaveBDIP) ))
 ))
 
 (defun memo-pngsaveBDIP(&optional (t00 nil))
@@ -1966,9 +1976,10 @@
     (setq L (reverse L))
     (if (= num 2)(progn
       (defun func1(xlist)
-        (let ((K nil)(n)(xx))
+        (let ((K nil)(n)(xx)(str))
           (dotimes (n (length xlist))
-            (setq xx (string-left-trim "MEG" (nth n xlist)))
+            (setq str (format nil "~a" (nth n xlist)))
+            (setq xx (string-left-trim "MEG" str))
             (setq K (cons (read-from-string xx) K)))
           (return (reverse K))
       ))
@@ -1995,6 +2006,8 @@
                            :scales (make-matrix n 1 (* amp 10)))))
 
     (define-MEGsite));Triux neo? VectorView? Cleaveland?
+    (unless (string-equal loadfiffname (resource (G-widget "file") :filename))
+      (set-resource (G-widget "MTX") :matrix (make-matrix 0 0 0)))
     (dotimes (n 11) 
       (setq dispname (format nil "disp~d" n))
       (if (G-widget dispname :quiet)(progn
@@ -2045,46 +2058,54 @@
 (defun rgb(r g b)(+ (* (+ (* r 256) g) 256) b))
 
 (defun routine(num)
-  (let ((func1))
-    (defun dipclear()(graph::xfit-command "dipclear"))
     (case num
       (1 (when (yes-or-no-p   
-        (format nil "The centroid cooridination ~% and the noise level are OK?"))
-          (progn (scan-record)(sort-scan)(dipclear)(dipclear)(memo-fit 0)(dipfilter)
-            (memo-extractepoch)(memo-pngsave))))
-      (2 (progn (dipapply)(dipsave)(rename-png "b" "epi")))
+        "The centroid cooridination ~% and the noise level are OK?"))
+          (progn (scan-record)(sort-scan)(dipclear)(memo-fit 0)(dipfilter)
+            (memo-extractepoch)(memo-pngsave)))
+      (2 (when (yes-or-no-p   
+        "The centroid cooridination ~% and the noise level are OK?"))
+          (progn (sort-scan)(dipclear)(memo-fit 0)(dipfilter)
+            (memo-extractepoch)(memo-pngsave)))      
+      (3 (progn (dipapply)(dipsave)(rename-png "b" "epi")))
     )
 ))
 
 (defun scan-record(&optional (step 0.5));;under construction
   (let ((mtx)(s1)(s2)(s3)(s4)(s5)(s6)(s7)(s8)
-    (n)(tm)(tm2)(tmax)(w)(R)(smp)(T)(chlist))
-    (setq s1 (require-widget :selector "s1"))(select-to s1 (gra   0 -  25));26
-    (setq s2 (require-widget :selector "s2"))(select-to s2 (gra  26 -  51));26
-    (setq s3 (require-widget :selector "s3"))(select-to s3 (gra  52 -  77));26
-    (setq s4 (require-widget :selector "s4"))(select-to s4 (gra  78 - 103));26
-    (setq s5 (require-widget :selector "s5"))(select-to s5 (gra 104 - 127));24
-    (setq s6 (require-widget :selector "s6"))(select-to s6 (gra 128 - 151));24
-    (setq s7 (require-widget :selector "s7"))(select-to s7 (gra 152 - 177));26
-    (setq s8 (require-widget :selector "s8"))(select-to s8 (gra 178 - 203));26
+    (n)(tm)(tm2)(tmax)(w)(R)(smp)(T)(chlist)(func1)(func2))
+    (defun func1(selname num1 num2)
+      (let ((ss)(gra (G-widget "gra")))
+        (setq ss (require-widget :selector "ss"))
+        (eval (read-from-string (format nil "(select-to ss (gra ~d - ~d))"
+          num1 num2)))
+        (if (G-widget selname :quiet)(GtDeleteWidget (G-widget selname)))
+        (set-resource ss :name selname)
+        (return ss)))
+    (setq s1 (func1 "s1"   0  25))
+    (setq s2 (func1 "s2"  26  51))
+    (setq s3 (func1 "s3"  52  77))
+    (setq s4 (func1 "s4"  78 103)) 
+    (setq s5 (func1 "s5" 104 127))
+    (setq s6 (func1 "s6" 128 151))
+    (setq s7 (func1 "s7" 152 177))
+    (setq s8 (func1 "s8" 178 203))
     (setq w (G-widget "gra"))
     (setq tm   (sample-to-x w (resource w :low-bound))
           tmax (sample-to-x w (resource w :high-bound)))
     (setq R nil)
     (setq smp (x-to-sample w step))
+
+    (defun func2(sel T)
+      (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix sel T smp)))))
+
     (while (< tm tmax)
       (setq n (round (/ tm tmax 0.01)) T (x-to-sample w tm))
       (unless (longworking (format nil "scanning...~d%%." n) n 100)
-       (error "interrupted"))
+        (progn (error "interrupted")(longworking "stopped" 100 100)))
       (setq mtx (list (list
-        (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix s1 T smp))))
-        (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix s2 T smp))))
-        (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix s3 T smp))))
-        (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix s4 T smp))))
-        (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix s5 T smp))))
-        (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix s6 T smp))))
-        (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix s7 T smp))))
-        (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix s8 T smp)))) )))
+        (func2 s1 T)(func2 s2 T)(func2 s3 T)(func2 s4 T)
+        (func2 s5 T)(func2 s6 T)(func2 s7 T)(func2 s8 T))))
       (setq R (append R mtx) tm2 (+ tm step))
       (if (> tm2 tmax)(setq tm2 tmax smp (x-to-sample w step)))
       (setq tm tm2))
@@ -2099,6 +2120,7 @@
     (link (G-widget "MTX")(G-widget "scandisp"))
     (set-resource (G-widget "scandisp") :point 0 :length tm
       :scales (make-matrix 8 1 w))
+    (setq loadfiffname (resource (G-widget "file") :filename))
     (XmTextSetString text-scanscale (format nil "~0,0f" (* w 1e+13)))
 ))
 
@@ -2265,13 +2287,25 @@
 ))
 
 (defun setframe004(&optional (frame frame004))
-  (let ((form)(arU)(arD)(label)(btn1)(btn2)(btn3))
+  (let ((form)(arU)(arD)(label)(func1)(dispmemo))
     (defvar text-scanscale nil)
     (defvar text-numpeak nil)
     (unmanage frame)
     (XtDestroyWidget (XtNameToWidget frame004 "form"))
     (setq form (make-form frame))
     (manage form)
+
+    (defun func1(name title offset width command)
+      (let ((btn))
+        (setq btn (make-button form name :labelString (XmString title)
+          :bottomAttachment XmATTACH_FORM :background (rgb 240 240 240)
+          :leftAttachment XmATTACH_FORM :leftOffset offset
+          :width width :shadowThickness 0 :detailShadowThickness 0))
+        (set-lisp-callback btn "activateCallback" command)
+        (manage btn)(return btn)  ))
+    (defun dispmemo()(let ((x form-memos))
+      (if (XtIsManaged x)(unmanage x)(manage x))))
+
     (setq text-scanscale (make-textfield form "text-scanscale"
       :leftAttachment XmATTACH_FORM :width 60
       :topAttachment  XmATTACH_FORM))
@@ -2299,39 +2333,29 @@
       :rightAttachment XmATTACH_FORM :rightOffset 10
       :labelString (XmString "peaks") ))
     (apply 'manage (list text-scanscale arU arD text-numpeak label))
-    (setq btn1 (make-button form "btn1" :labelString (XmString "8 waves")
-      :leftAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM))
-    (setq btn2 (make-button form "btn2" :labelString (XmString "check")
-      :leftAttachment XmATTACH_FORM :leftOffset 100 
-      :bottomAttachment XmATTACH_FORM))
-    (setq btn3 (make-button form "btn3" :labelString (XmString "scan")
-      :rightAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM))
-    (dolist (b (list btn1 btn2 btn3))(button-no-edge b))
-    (set-lisp-callback btn1 "activateCallback" '(widenScan))
-    (set-lisp-callback btn2 "activateCallback" '(sort-scan))
-    (set-lisp-callback btn3 "activateCallback" '(scan-record))
-    (apply 'manage (list btn1 btn2 btn3))
+    (func1 "btn1" "8 waves" 0 60 '(widenScan))
+    (func1 "btn2" "memos"   63 48 '(dispmemo))
+    (func1 "btn3" "check"  114 45 '(sort-scan))
+    (func1 "btn4" "scan"   162 38 '(scan-record))
     (manage frame)
 ))
 
 (defun set-fitmenu(form)
-  (let ((up)(down)(left)(right)(btn1)(btn2)(b))
-    (setq up    (make-arrowbutton form "arU" 
-      :arrowDirection XmARROW_UP :width 15 
-      :leftAttachment XmATTACH_FORM
-      :bottomAttachment XmATTACH_WIDGET :bottomWidget text-near))
-    (setq down  (make-arrowbutton form "arD"
-      :arrowDirection XmARROW_DOWN :width 15
-      :leftAttachment XmATTACH_WIDGET :leftWidget up
-      :bottomAttachment XmATTACH_WIDGET :bottomWidget text-near))
-    (setq left  (make-arrowbutton form "arL"
-      :arrowDirection XmARROW_LEFT :width 15 
-      :leftAttachment XmATTACH_WIDGET :leftWidget down
-      :bottomAttachment XmATTACH_WIDGET :bottomWidget text-near))
-    (setq right  (make-arrowbutton form "arD"
-      :arrowDirection XmARROW_RIGHT :width 15 
-      :leftAttachment XmATTACH_WIDGET :leftWidget left
-      :bottomAttachment XmATTACH_WIDGET :bottomWidget text-near))  
+  (let ((up)(down)(left)(right)(btn1)(btn2)(func1))
+    (defun func1(name direction offset command)
+      (let ((btn))
+        (setq btn (make-arrowbutton form name
+          :arrowDirection direction :width 15
+          :bottomAttachment XmATTACH_WIDGET :bottomWidget text-near
+          :bottomOffset 6
+          :leftAttachment XmATTACH_FORM :leftOffset offset))
+        (set-lisp-callback btn "activateCallback" command)
+        (manage btn)(return btn)  ))
+    (setq up    (func1 "arU" XmARROW_UP     0 '(change-pane "up")))
+    (setq down  (func1 "arD" XmARROW_DOWN  15 '(change-pane "down")))
+    (setq left  (func1 "arL" XmARROW_LEFT  30 '(change-pane "left")))
+    (setq right (func1 "arR" XmARROW_RIGHT 45 '(change-pane "right")))
+
     (setq btn1 (make-button form "btn-transfer"
       :leftAttachment XmATTACH_WIDGET :leftWidget right
       :labelString (XmString "transfer")
@@ -2342,14 +2366,9 @@
       :rightAttachment XmATTACH_FORM  :labelString (XmString "fit")
       :bottomAttachment XmATTACH_WIDGET :bottomWidget text-near
       :bottomOffset 2))
-    (dolist (b (list up down left right))(set-values b :bottomOffset 6))
-    (set-lisp-callback up    "activateCallback" '(change-pane "up"))
-    (set-lisp-callback down  "activateCallback" '(change-pane "down"))
-    (set-lisp-callback left  "activateCallback" '(change-pane "left"))
-    (set-lisp-callback right "activateCallback" '(change-pane "right"))
     (set-lisp-callback btn1  "activateCallback" '(xfit-transfer))
     (set-lisp-callback btn2  "activateCallback" '(xfit-transfer t)) 
-    (apply 'manage (list up down left right btn1 btn2))
+    (apply 'manage (list btn1 btn2))
 ))
 
 (defun set-near-coil(ch)
@@ -2644,6 +2663,15 @@
 ))
 
 (defun sort-scan()
+  (let ((filename))
+    (setq filename (resource (G-widget "file") :filename))
+    (if (not (string-equal filename loadfiffname))
+      (info "The filename is not compatible!! ~% Scan again!")
+      (if (yes-or-no-p "You must wait for a while.~% Are you sure?")
+        (sort-scan-core)))
+))
+
+(defun sort-scan-core()
   (let ((n)(t0)(mtx)(x nil)(x1)(x2)(R nil)(MTX)(func1)(xscale)(num)(gra)
     (buf)(L)(maxf)(w)(xscale2)(nn))
     (setq MTX (G-widget "MTX") xscale (resource MTX :x-scale))
@@ -2667,7 +2695,7 @@
       (dotimes (n (length x2))
         (setq nn (round (/ (* n 100) num)))
         (unless (longworking (format nil "sorting...~d%%" nn) 
-          n num)(error "interrupted"))
+          n num)(progn (error "interrupted")(longworking "stopped" 100 100)))
         (setq t0 (nth n x2))(set-resource w :point t0)
         (setq L (get-max-widget w t0));max fT MEGxxxx xxxsec
         (setq maxf (first L))
