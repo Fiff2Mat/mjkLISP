@@ -448,6 +448,12 @@
      (system "xset b on");;bell on
 ))
 
+(defun search-low-baseline()
+  (let (())
+
+
+))
+
 (defun setup-EEG(eeg1);eeg1-triuxneo eeg1-vectorview etc..
   (let ((n)(ch)(channels)(w)(nch)(kind)(name))
     (setq w (G-widget "EEG"))
