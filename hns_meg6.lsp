@@ -34,7 +34,7 @@
     ""
     "Released by Akira Hashizume, Hiroshima University Hospital"
     "on 2026-March-23,"
-    "revised on 2026-Apri-1st"
+    "revised on 2026-April-13th"
     "This code is designed for MEG epilepsy analysis"
     ""
     "This program hns_meg6.lsp requires other 4 files,"
@@ -464,9 +464,8 @@
         (dolist (ch chlist)
           (add-button this ch (func1 dispname ch))) ))
     (defun rgb(r g b)(+ (* (+ (* r 256) g) 256) b))
-
     (setq chlist (list "banana1" "banana2" "banana3" 
-            "transverse" "mono1" "mono2" "average1" "average2"))
+      "transverse" "mono1" "mono2" "average1" "average2"))
     (setq form  (XtNameToWidget frame001 "form"))
     (setq form0 (XtNameToWidget form "form0")) 
     (dotimes (n 10)
@@ -488,7 +487,7 @@
           :shadowThickness 0 :background (rgb 240 240 240)))
         (setq menu (make-menu bar "ch" nil :---- ))
         (apply 'manage (list menu bar))
-        (func2 menu dispname)
+        (func2 menu dispname chlist)
         (setq text (make-textfield form0 (str-append dispname "-text")
           :topAttachment XmATTACH_POSITION :topPosition (* m 50)
           :leftAttachment XmATTACH_WIDGET :leftWidget bar
@@ -519,6 +518,8 @@
       (setq str (nth n strlist))
       (dolink dispname str)) 
 ))
+
+
 
 (defun create-memos()
   (let ((form)(bar)(btn1)(pane)(memo)(n)(frame)(memo)(label)(str)(formn))
@@ -584,7 +585,7 @@
       (let ((label))
         (setq label (make-label formn name :labelString (XmString title)
           :topAttachment  XmATTACH_FORM :topOffset 5
-          :leftAttachment XmATTACH_WIDGET :leftWidget Xw :leftOffset 5))
+          :leftAttachment XmATTACH_WIDGET :leftWidget Xw :leftOffset 2))
         (manage label) (return label)  ))
     (defun func4(name width Xw title)
       (let ((text))
@@ -597,11 +598,11 @@
     (func2 "btn3" "extract" 100 '(dipdelete t))
     (setq btn4 (func2 "btn4" "filter" 150 '(dipfilter)))
     (setq label1 (func3 "label1" "gof" btn4))
-    (setq text-gof (func4 "text-gof" 40 label1 "70"))
+    (setq text-gof (func4 "text-gof" 35 label1 "70"))
     (setq label2 (func3 "label2" "cv" text-gof))
-    (setq text-cv (func4 "text-cv" 40 label2 "-1"))
+    (setq text-cv (func4 "text-cv" 46 label2 "-1"))
     (setq label3 (func3 "label3" "khi2" text-cv))
-    (setq text-khi (func4 "text-khi" 60 label3 "-1"))
+    (setq text-khi (func4 "text-khi" 51 label3 "-1"))
     (setq btn5 (make-button formn "btn5" 
       :topAttachment XmATTACH_FORM :height 30
       :rightAttachment XmATTACH_FORM 
@@ -704,8 +705,12 @@
     (add-button this "extract epoch with dipoles" '(memo-extractepoch))
     (add-separator this)
     (make-menu this "waves" nil :tear-off
+      '("?"           (memo-insert " ?"))
       '("discharge"   (memo-insert " discharge"))
       '("spike"       (memo-insert " spike"))
+      '("sharp"       (memo-insert " sharp"))
+      '("slow"        (memo-insert " slow"))
+      '("spike&slow"  (memo-insert " spike&slow"))
       '("polyspike"   (memo-insert " polyspike"))
       '("burst"       (memo-insert " burst"))
       '("ictal_onset" (memo-insert " ictal_onset"))
@@ -1196,6 +1201,7 @@
         ( t (link2 str dispname))
       )
       (manage form0)  ))
+    (change-color)
 ))
 
 (defun eval-noise-menu()
@@ -1232,6 +1238,37 @@
     (return R)
 ))
 
+(defun get-backgroundcolor()
+  (let ((form))
+    (setq form (XtNameToWidget frame001 "form"))
+    (get-integer-resource form "background")
+))
+
+
+(defun get-chlist();; not used
+  (let ((n)(chlist)(nch)(w (G-widget "EEG-fil")))
+    (setq chlist (list "banana1" "banana2" "transverse" 
+                  "mono1" "mono2" "average1" "average2")) 
+    (setq nch (resource w :channels))
+    (if (> nch 20)(progn
+      (catch 'exit (dotimes (n (resource w :channels))
+        (if (string-equal (get-property w n :name) "FT9")
+          (throw 'exit (setq chlist (list 
+            "banana1" "banana2" "banana3" "transverse"
+            "mono1" "mono2" "average1" "average2"))))))))
+    (return chlist) 
+))
+
+(defun get-disptext(n)
+  (let ((form)(form0)(text nil)(str nil))
+    (setq form (XtNameToWidget frame001 "form"))
+    (setq form0 (XtNameToWidget form "form0"))
+    (setq text (XtNameToWidget form0
+      (format nil "disp~d-text" n)))
+    (if text (return (list text (XmTextGetString text)))
+      (return (list nil nil)))
+))
+
 (defun get-gramag()
   (let ((n)(disp)(x nil)(gra nil)(mag nil)(func1))
     (defun func1(str string)
@@ -1247,22 +1284,6 @@
     (catch 'exit (dotimes (n (length x))
       (if (func1 "mag-" (nth n x))(throw 'exit (setq mag (1+ n))))))    
     (return (list gra mag))
-))
-
-(defun get-backgroundcolor()
-  (let ((form))
-    (setq form (XtNameToWidget frame001 "form"))
-    (get-integer-resource form "background")
-))
-
-(defun get-disptext(n)
-  (let ((form)(form0)(text nil)(str nil))
-    (setq form (XtNameToWidget frame001 "form"))
-    (setq form0 (XtNameToWidget form "form0"))
-    (setq text (XtNameToWidget form0
-      (format nil "disp~d-text" n)))
-    (if text (return (list text (XmTextGetString text)))
-      (return (list nil nil)))
 ))
 
 (defun get-label-list(label)
@@ -1472,8 +1493,6 @@
     (add-button *help-menu* "about hns_meg6.lsp" '(AboutMe))
     (create-memos)
     (unmanage form-memos)
-    (layout1 "GRA204" "gra-L-temporal" "banana1")
-    (change-color 2)
     
 ))
 
@@ -1573,14 +1592,6 @@
     (layout-end strlist)
 ))
 
-(defun layout-end(strlist)
-  (add-sync)
-  (create-bartext strlist)
-  (dispcolor)
-  (change-color)
-  (manage frame001)
-)
-
 (defun link1(str dispname);GRA204/MAG102
   (let ((n)(num)(names)(w)(meg)(formx)(dispw)(btn)(scales)(offsets)(x8))
     (setq num (string-left-trim "disp" dispname))
@@ -1593,18 +1604,17 @@
     (if (string-equal str "GRA204")(setq meg 204)(setq meg 102))
     (if (first (get-disptext 6))(progn
       (if (string-member num (list "1" "3" "5" "7" "9"))
-        (setq x8 (ruler-vector 3 40 8))   ;10disp 1,3,5,7,9
-        (setq x8 (ruler-vector 53 90 8))));10disp 2,4,6,8,10
-      (setq x8 (ruler-vector 7 85 8)));2~5 disp
+        (setq x8 (ruler-vector 6 44 8))   ;10disp 1,3,5,7,9
+        (setq x8 (ruler-vector 56 94 8))));10disp 2,4,6,8,10
+      (setq x8 (ruler-vector 12 88 8)))
     (setq names (list "L-temporal" "R-temporal" "L-parietal" "R-parietal"
       "L-occipital" "R-occipital" "L-frontal" "R-frontal"))
     (dotimes (n 8)
       (setq btn (make-button formx (format nil "btn~a-~d" num (1+ n))
         :labelString (XmString (nth n names))
         :rightAttachment XmATTACH_WIDGET :rightWidget dispw
-        :topAttachment   XmATTACH_POSITION :topOffset 25 
+        :topAttachment   XmATTACH_POSITION 
         :topPosition (round (vref x8 n))
-        :bottomOffset XmATTACH_FORM :bottomOffset 5
         :shadowThickness 0 :detailShadowThickness 0))
       (set-lisp-callback btn "activateCallback" (read-from-string
         (format nil "(select-meg ~d ~d )" meg n))) 
@@ -1632,6 +1642,15 @@
     (set-scale w)
     (set-resource w :offsets (transpose offsets)) 
 ))
+
+(defun layout-end(strlist)
+  (add-sync)
+  (create-bartext strlist)
+  (dispcolor)
+  (change-color)
+  (manage frame001)
+)
+
 
 (defun link2(str dispname);gra- mag-
   (let ((num)(w)(chs))
@@ -1681,7 +1700,14 @@
 ))
 
 (defun link4(lead dispname);mono1 mono2 average1 average 2
-  (let ((ref)(w)(num)(mono)(pick)(picks)(n))
+  (let ((ref)(w)(num)(mono)(pick)(picks)(n)(avs))
+    (defun avs(nch name)
+      (let ((n)(R nil))
+        (dotimes (n nch)
+          (setq R (cons name R)))
+        (return R))) 
+    (if (string-member lead (list "average1" "average2"))
+      (info "Use of average1 or average2 can make Graph unstable and crash!")) 
     (clear-widgets dispname)
     (setq w (G-widget dispname))
     (change-time w)
@@ -1693,14 +1719,14 @@
     (link (G-widget "EEG-fil")(G-widget "buf3"))
     (link (G-widget "buf3") pick)
     (setq sel (require-widget :selector (format nil "sel~a" num)))
-    (if (string-member lead (list "average1" "average2"))(progn
+    (if (string-member lead (list "average1" "average2"))
+    (progn ;average
       (setq av (require-widget :vecop (format nil "vecop~a" num)))
       (set-resource av :mode "average")
       (link pick av)
-      (set-property av 0 :name "av")
       (setq picks (require-widget :pick (format nil "pick~as" num)))
-      (set-resource picks :names '("av" "av" "av" "av" "av" "av" "av" 
-        "av" "av" "av" "av" "av" "av" "av" "av" "av" "av" "av" "av"))
+      (set-resource picks :names 
+        (avs (resource pick :channels)(get-property av 0 :name)))
       (setq sub (require-widget :binary (format nil "fsub~a" num)))
       (set-resource sub :function 'fsub)
       (link av picks)
@@ -1708,7 +1734,8 @@
       (link picks sub)
       (dotimes (n (resource pick :channels))
         (set-property sub n :name (format nil "~a-ave" (nth n mono))))
-      (link-eegsel (resource sub :name)(resource sel :name)))(progn 
+      (link-eegsel (resource sub :name)(resource sel :name)))
+    (progn ; mono
       (dotimes (n (resource pick :channels))
         (set-property pick n :name (format nil "~a-ref" (nth n mono))))
       (link-eegsel (resource pick :name)(resource sel :name))))
@@ -3137,5 +3164,9 @@
 (defun XmTextGetNumber(XmText)
   (return (read-from-string (XmTextGetString XmText)))
 )
-(if (G-widget "display" :quiet)(initialize))
+(if (G-widget "display" :quiet)(progn
+  (initialize)
+  (layout1 "GRA204" "gra-L-temporal" "banana1")
+  (change-color 2)
+))
 
