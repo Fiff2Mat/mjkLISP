@@ -34,7 +34,7 @@
     ""
     "Released by Akira Hashizume, Hiroshima University Hospital"
     "on 2026-March-23,"
-    "revised on 2026-April-13th"
+    "revised on 2026-April-22nd"
     "This code is designed for MEG epilepsy analysis"
     ""
     "This program hns_meg6.lsp requires other 4 files,"
@@ -754,7 +754,9 @@
       '("colored line" (change-color 2))
       '("black/white line" (change-color 1)))
     (add-button this "build C-files (only 1st use)" '(buildC))
-      ))
+    (add-button this "shrink xfit" '(xfit-size t))
+    ;(add-button this "help" '(system 
+    ;  (format nil "xdg-open ~a/tutorials/hns_meg6.html" (filename-directory *hns-meg*))))
 ))
 
 (defun create-noisemenu()
@@ -1128,13 +1130,15 @@
           (setq k (list (- x 0.25) 0.5 'MEG0000 x 0.0))
           (setq L (cons k L))  ))  )
       (setq L (dip2epoch-core (reverse L)))
-      (XmjkLispListSet (get-memop) L)
       ))
 ))
 
 (defun dip2epoch-core(L)
-  (let ((n)(t0)(span)(gra)(R nil)(K)(Z)(lb)(func1))
+  (let ((n)(t0)(span)(gra)(R)(K)(Z)(lb)
+    (get-list)(limcheck)(lbd)(hbd)))
     (setq gra (G-widget "gra"))
+    (setq lbd (sample-to-x gra (resource gra :low-bound)))
+    (setq hbd (sample-to-x gra (resource gra :high-bound)))
     (if (yes-or-no-p "apply low-bound")(setq lb 0.0)(progn
       (setq lb (resource gra :low-bound))
       (setq lb (sample-to-x gra lb))
@@ -1149,11 +1153,22 @@
         (setq tmax (* (first X) 1e+13))
         (setq XX (list t1 span1 name tpeak tmax))
         (return XX) ))
+    (defun limcheck(K)
+      (let ((t0)(span))
+        (setq t0 (+ (first K) lb))
+        (setq span (second K))
+        (if (< t0 lbd)(progn 
+          (setq span (- span (- lbd t0)))
+          (setq t0 lbd)))
+        (if (> (+ t0 span) hbd)(setq span (- hbd t0)))
+        (return (list t0 span))))
+    (setq R nil)
     (dotimes (n (length L))
       (setq K (nth n L))
-      (setq Z (get-list (+ (first K) lb) (second K)))
+      (setq K (limcheck K))
+      (setq Z (get-list (first K)(second K)))
       (setq R (cons Z R)) )
-    (return (reverse R))
+    (XmjkLispListSet (get-memop) (reverse R))
 ))
 
 
@@ -2506,7 +2521,7 @@
       (if (XtIsManaged x)(unmanage x)(manage x))))
 
     (setq text-scanscale (make-textfield form "text-scanscale"
-      :leftAttachment XmATTACH_FORM :width 60
+      :leftAttachment XmATTACH_FORM :width 50
       :topAttachment  XmATTACH_FORM))
     (XmTextSetString text-scanscale "500")
     (set-lisp-callback text-scanscale "valueChangedCallback" 
@@ -2523,19 +2538,21 @@
       '(change-scale-value text-scanscale 1))
     (set-lisp-callback arD "activateCallback" 
       '(change-scale-value text-scanscale -1))  
-    (setq text-numpeak (make-textfield form "text-numpeak"
-      :leftAttachment XmATTACH_WIDGET :leftWidget text-scanscale
-      :leftOffset 40  :topAttachment  XmATTACH_FORM :width 40))
-    (XmTextSetString text-numpeak "50")
     (setq label (make-label form "label"
       :topAttachment XmATTACH_FORM :topOffset 5 
-      :rightAttachment XmATTACH_FORM :rightOffset 10
+      :rightAttachment XmATTACH_FORM 
       :labelString (XmString "peaks") ))
-    (apply 'manage (list text-scanscale arU arD text-numpeak label))
-    (func1 "btn1" "8 waves" 0 60 '(widenScan))
-    (func1 "btn2" "memos"   63 48 '(dispmemo))
-    (func1 "btn3" "check"  114 45 '(sort-scan))
-    (func1 "btn4" "scan"   162 38 '(scan-record))
+    (setq text-numpeak (make-textfield form "text-numpeak"
+      :rightAttachment  XmATTACH_WIDGET :rightWidget label
+      :topAttachment  XmATTACH_FORM :width 32))
+    (XmTextSetString text-numpeak "50")
+
+    (apply 'manage (list text-scanscale arU arD label text-numpeak))
+    (func1 "btn1" "8 waves" 0 70 '(widenScan))
+    (func1 "btn2" "memos"   70 50 '(dispmemo))
+    (set-values (XtNameToWidget form "btn2") :bottomOffset 33)
+    (func1 "btn3" "check"  90 50 '(sort-scan))
+    (func1 "btn4" "scan"   150 50 '(scan-record))
     (manage frame)
 ))
 
@@ -3124,6 +3141,15 @@
       ))
     (set-resource (G-widget "meg"):ignore ignore)
 ))
+
+(defun xfit-size(&optional (check nil))
+  (if check (progn
+    (graph::xfit-command "displaysize 150")
+    (graph::xfit-command "window main 50 50 750 750"))
+  (progn
+    (graph::xfit-command "displaysize 250")
+    (graph::xfit-command "window main 500 20 1150 1020")) )
+)
 
 (defun xfit-transfer(&optional (fit nil))
   (let ((names)(L)(str)(t0)(tend)(tpeak)(ch)(bs1)(bs2)(cmd))
