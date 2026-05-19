@@ -34,7 +34,7 @@
     ""
     "Released by Akira Hashizume, Hiroshima University Hospital"
     "on 2026-March-23,"
-    "revised on 2026-April-22nd"
+    "revised on 2026-May-18th"
     "This code is designed for MEG epilepsy analysis"
     ""
     "This program hns_meg6.lsp requires other 4 files,"
@@ -440,6 +440,21 @@
     (gc) 
 ))
 
+(defun convertRL()
+  (let ((ch)(ch0)(num)(chs)(n)(w))
+    (setq w (G-widget "EEG"))
+    (dotimes (n (resource w :channels))
+      (setq ch (get-property w n :name))
+      (if (= (length ch)(length (string-left-trim "EG" ch)))(progn
+        (setq ch0 (string-right-trim "0123456789" ch))
+        (setq num (read-from-string (string-left-trim ch0 ch)))
+        (if (integerp num)
+          (if (oddp num)
+            (setq ch (format nil "~a~d" ch0 (1+ num)))
+            (setq ch (format nil "~a~d" ch0 (1- num))) )) ))
+      (set-property w n :name ch)
+))
+
 (defun create-bartext(&rest strlist);"GRA204" "gra-L-temporal" "banana1"...
   (let ((form)(form0)(n)(m)(dispname)(bar)(menu)(text)(rgb)(func1)(this)
     (str)(func2)(chlist))
@@ -691,7 +706,7 @@
     (add-button this "save *-wave.txt" '(memo-save))
     (add-button this "load DIP file as epoch" '(dip2epoch))
     (add-separator this)
-    (add-button this "save as PNG file" '(memo-pngsave))
+    (add-button this "consecutive save as PNG file" '(memo-pngsave))
     (add-button this "convert b*.png > epi*.png" '(rename-png "b" "epi"))
     (add-button this "convert epi*.png > b*.png" '(rename-png "epi" "b"))
     (add-separator this)
@@ -736,6 +751,7 @@
     (setq this (make-menu bar "dipole" nil))
     (make-menu this "sort" nil
       '("time"      (dip-sort 0))
+      '("x"         (dip-sort 1))
       '("Q nAm"     (dip-sort 4))
       '("gof"       (dip-sort 7))
       '("cv"        (dip-sort 8))
@@ -750,13 +766,13 @@
     (add-button this "epochs > dipole > filter > PNG" '(routine 2))
     (add-button this "PNG > epoch & dipole > BDIP" '(routine 3))
     (setq this (make-menu bar "miscellaneous" nil))
+    (add-button this "R<->L on EEG" '(convertRL)) 
     (make-menu this "line color" nil
       '("colored line" (change-color 2))
       '("black/white line" (change-color 1)))
     (add-button this "build C-files (only 1st use)" '(buildC))
     (add-button this "shrink xfit" '(xfit-size t))
-    ;(add-button this "help" '(system 
-    ;  (format nil "xdg-open ~a/tutorials/hns_meg6.html" (filename-directory *hns-meg*))))
+      ))
 ))
 
 (defun create-noisemenu()
@@ -1941,18 +1957,24 @@
       (setq span (read-from-string (XmTextGetString text-length)))
       (setq t0 (- t0 (/ span 2)))
       (XmTextSetString text-start (format nil "~0,2f" t0))
-      (setq w (get-gramag))
+      (setq w (get-gramag));(1st gradisp 1st magdisp)
       (if (first w)(progn
-          (setq R (get-mxvcp t0 span (G-widget "gra")))
-          (setq R (list (first w)(which-meg8 (second R)))))
-        (if (second w)(progn
-          (setq R (get-mxvcp t0 span (G-widget "mag")))
-          (setq R (list (second w)(which-meg8 (second R)))) )) )
-      (if R (progn
-        (setq x (get-disptext (first R)))
-        (XmTextSetString (first x)(second R))
-        (link2 (second R)(format nil "disp~d" (first R)))
-      ))
+        (setq x (get-disptext (first w)))
+        (setq R (which-meg8 (third L)))
+        (XmTextSetString (first x) R)
+        (link2 R (format nil "disp~d" (first w))) ))
+      (if (second w)(progn
+        (GtUnlinkWidget (G-widget "dispmag"))
+        (link (G-widget "mag")(G-widget "winmag"))
+        (set-resource (G-widget "winmag")
+          :point (first L) :end (second L))
+        (link (G-widget "winmag")(G-widget "dispmag"))
+        (setq x (get-disptext (second w)))
+        (setq R (second (get-max-widget (G-widget "winmag"))))
+        (setq R (which-meg8 R))
+        (setq x (get-disptext (second w)))
+        (XmTextSetString (first x) R)
+        (link2 R (format nil "disp~d" (second w))) ))
       (setq scan (G-widget "scandisp"))
       (if (= (resource scan :channels) 8)
         (set-resource scan  :selection-start (- t0 
@@ -2076,6 +2098,7 @@
       (dotimes (n (length R))
         (setq L (nth n R)) 
         (memo-goto (list L))
+        (memo-pngsaveBDIP (fourth L))
         (setq f (format nil "~0,0f" (* (fourth L) 1e+3)))
         (setq f (str-append dir "b" (string-trim " " f)))
         (system (format nil "xwd -id ~a > ~a.xwd" id f))
