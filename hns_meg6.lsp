@@ -452,7 +452,7 @@
           (if (oddp num)
             (setq ch (format nil "~a~d" ch0 (1+ num)))
             (setq ch (format nil "~a~d" ch0 (1- num))) )) ))
-      (set-property w n :name ch)
+      (set-property w n :name ch))
 ))
 
 (defun create-bartext(&rest strlist);"GRA204" "gra-L-temporal" "banana1"...
