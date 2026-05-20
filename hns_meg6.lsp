@@ -34,7 +34,7 @@
     ""
     "Released by Akira Hashizume, Hiroshima University Hospital"
     "on 2026-March-23,"
-    "revised on 2026-May-18th"
+    "revised on 2026-May-20th"
     "This code is designed for MEG epilepsy analysis"
     ""
     "This program hns_meg6.lsp requires other 4 files,"
@@ -350,12 +350,17 @@
 ))
 
 (defun change-time(&optional (w nil))
-  (let ((n)(name)(tmin)(tmax)(buf)(t0)(span))
+  (let ((n)(name)(tmin)(tmax)(buf)(t0)(span)(func1))
+    (defun func1(XmText)
+      (let ((x))
+        (setq x (read-from-string (XmTextGetString XmText)))
+        (XmTextSetString XmText (format nil "~0,2f" x))
+        (return (read-from-string (XmTextGetString XmText)))))
     (setq buf (G-widget "buf"))
     (setq tmin (sample-to-x buf (resource buf :low-bound)))
     (setq tmax (sample-to-x buf (resource buf :high-bound)))
-    (setq t0 (read-from-string (XmTextGetString text-start)))
-    (setq span (read-from-string (XmTextGetString text-length)))
+    (setq t0   (func1 text-start))
+    (setq span (func1 text-length))
     (if (< t0 tmin)(progn (setq t0 tmin)
       (XmTextSetString text-start (format nil "~0,2f" t0))))
     (if (> (+ t0 span) tmax)(progn (setq t0 (- tmax span))
@@ -2097,8 +2102,8 @@
       (system "xset b off"); bell off
       (dotimes (n (length R))
         (setq L (nth n R)) 
-        (memo-goto (list L))
         (memo-pngsaveBDIP (fourth L))
+        (memo-goto (list L))
         (setq f (format nil "~0,0f" (* (fourth L) 1e+3)))
         (setq f (str-append dir "b" (string-trim " " f)))
         (system (format nil "xwd -id ~a > ~a.xwd" id f))
