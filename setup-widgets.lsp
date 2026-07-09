@@ -58,6 +58,39 @@
     (/ xx elements)
 ))
 
+(defun calc-snsmap(xlist ylist zlist)
+  (let ((n)(x)(y)(z)(r)(ph)(cx)(cy)(w)(CX nil)(CY nil)(m)(ch)(CH nil))
+    (setq w (* -1 100))
+    (dotimes (n (length xlist))
+      (setq x (nth n xlist) y (nth n ylist) z (nth n zlist))
+      (setq x (* x 1000) y (* y 1000) z (* z 1000));;float^2 in 32bit...
+      (setq r (sqrt (+ (sqr x)(sqr y)(sqr z))))
+      (setq ph (asin (/ z r)))
+      (setq x (/ x r) y (/ y r))
+      (setq ph (- ph (/ 3.1415926535 2)))
+      (setq ph (* (+ ph -0.4) w))
+      ;(print (list n ph))
+      (cond
+        ((> ph 160)(setq ph (- ph 50)))
+        ((> ph 140)(setq ph (- ph 40)))
+        ((> ph 120)(setq ph (- ph 30)))
+        ((> ph 100)(setq ph (- ph 20)))
+      )
+      (setq y (* y -1) ph (+ ph 0))
+      (setq cx (* x ph 1.07))
+      (setq cy (* y ph 1.21))
+      (setq cx (+ cx 186) cy (+ cy 166))
+      (setq CX (cons cx CX))
+      (setq CY (cons cy CY)) )
+    (setq CX (mapcar #'round CX) CY (mapcar #'round CY))
+    ;(print (list (eval (cons 'min CX))(eval (cons 'max CX))))
+    ;(print (list (eval (cons 'min CY))(eval (cons 'max CY))))
+    (dotimes (n 26)(dotimes (m 4)
+      (setq ch (+ (* (1+ n) 10) m 1))
+        (if (or (< ch 83)(> ch 84))(setq CH (cons ch CH)))))
+    (return (list (reverse CX)(reverse CY)(reverse CH)))
+))
+
 (defun check-channel()
   (let ((file)(n)(kind nil)(ch-class nil)(subfunc1)(chname))
     (defun chname(num)
@@ -195,8 +228,7 @@
       (sqr (- (nth i k)(nth j k))))
     (defun make-chname()  
       (let ((x)(y)(ch nil))
-        (dotimes (x 26)
-          (dotimes (y 4)
+        (dotimes (x 26)(dotimes (y 4)
             (setq n (+ (* x 10) y 11))
             (setq ch (append ch (list n)))))
         (setq ch (delete 83 ch))
@@ -278,6 +310,7 @@
           (+ (func1 i j x)(func1 i j y)(func1 i j z))  ))))
       (setq ch-dist (append ch-dist (list (mapcar #'sqrt dist)))) )  
        ;(setq chdist (append chdist (list (mapcar #'sqrt dist))))))
+    (snsmap)
     (return (calc-near-coil));near-coil
 ))
 
@@ -398,7 +431,21 @@
 ))
 
 (defun make-random-matrix(row column)
-  (/ (random-matrix row column) (pow 2 31)))
+  (/ (random-matrix row column) (pow 2 31)))  
+
+(defun make-topo()
+  (let ((n)(m)(form-topo));(dw))
+    (setq form-topo (make-form-dialog *application-shell* "form-topo"
+      :resizable 1 :title "topography"
+      :background (rgb 255 255 255) :width 400 :height 400))
+    (setq dw (XmCreateDrawingArea form-topo "dw" (X-arglist) 0))
+    (set-values dw 
+      :leftAttachment XmATTACH_FORM :rightAttachment XmATTACH_FORM
+      :topAttachment XmATTACH_FORM :bottomAttachment XmATTACH_FORM)
+    (manage dw)
+    (manage form-topo)
+))
+
 
 (defun online()
   (let ((filename)(dirname "/neuro/dacq/raw/*aw*")(check nil))
@@ -448,21 +495,19 @@
      (system "xset b on");;bell on
 ))
 
-(defun search-low-baseline()
-  (let (())
-
-
-))
-
 (defun setup-EEG(eeg1);eeg1-triuxneo eeg1-vectorview etc..
   (let ((n)(ch)(channels)(w)(nch)(kind)(name))
-    (setq w (G-widget "EEG"))
+    (setq  w (G-widget "EEG"))
     (setq channels (resource w :channels))
     (setq nch (length eeg1))
     (dotimes (n (resource w :channels))
       (if (< n nch)(setq ch (nth n eeg1))
         (setq ch (get-property w n :name)))
       (set-property w n :name ch))
+    (if (string-equal "EEG"
+      (resource (widget-source (G-widget "ECG")):name))
+      (dolist (w (list "ECG" "EOG" "EMG")) ;; for VectorView
+        (link (G-widget "EEG") (G-widget w))))
     (dolist (ch (list "ECG" "EOG" "EMG"))
       (cond 
         ((string-equal ch "ECG")(setq kind 402))
@@ -476,4 +521,35 @@
         (set-property (G-widget ch) n :name name)))
       (if (= nch 1)(set-property (G-widget ch) 0 :name ch)))
     (link (G-widget "EEG-fil")(G-widget "eeg"))
+))
+
+(defun snsmap()
+  (let ((SNS)(X)(Y)(CH)(n)(label)(name)(ch)(col)(rgb))
+    (defun rgb(r g b)(+ (* (+ (* r 256) g) 256) b))
+    (defvar form-snsmap nil "sensor layout")
+    (setq form-snsmap (make-form-dialog *application-shell* "form-snsmap"
+      :resizable 0 :title "sensor layout"
+      :background (rgb 255 255 255) :width 400 :height 400))
+    (setq SNS (calc-snsmap x y z))
+    (setq X (first SNS) Y (second SNS) CH (third SNS)) 
+    (dotimes (n 102)
+      (setq ch (nth n CH))
+      (setq col (rgb 0 0 0))
+      (cond  
+        ((member ch '(22 21 13 11 23 24 151 14 162 161 152 154 153))(setq col (rgb 255 64 64)))
+        ((member ch '(131 132 144 142 134 133 261 143 241 242 264 262 263))(setq col (rgb 0 255 0)))
+        ((member ch '(63 42 41 71 43 44 74 182 181 183 184 163 201))(setq col (rgb 128 128 255)))  
+        ((member ch '(104 111 112  72 114 113 73 221 222 224 223 244 202))(setq col (rgb 192 192 64)))
+        ((member ch '(204 191 211 192 194 164 193 173 172 214 174 171))(setq col (rgb 192 128 192)))
+        ((member ch '(203 231 234 232 243 212 233 251 252 213 254 253))(setq col (rgb 64 192 192)))
+        ((member ch '(52 51 31 34 12 82 53 54 32 61 33 62 64))(setq col (rgb 192 128 128)))
+        ((member ch '(81 91 92 121 122 141 94 93 123 101 102 124 103))(setq col (rgb 192 192 255)))
+      )     
+      (setq name (format nil "~d" ch))            
+      (setq label (make-label form-snsmap name
+       :labelString (XmString name) :background col
+       :topAttachment XmATTACH_FORM :topOffset (nth n Y)
+       :leftAttachment XmATTACH_FORM :leftOffset (nth n X)))
+      (manage label) )
+    ;(manage form-snsmap) 
 ))
