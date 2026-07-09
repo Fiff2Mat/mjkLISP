@@ -1,5 +1,5 @@
 ;;Released by Akira Hashizume, Hiroshima University Hospital
-;;on 2026-March-23
+;;on 2026-July-9
 ;;
 ;;for details, see AboutMe
 ;;
@@ -432,6 +432,9 @@
         (setq name (format nil "btn~d-~d" n (1+ nn)))
         (setq w (XtNameToWidget form0 name))
         (if w (XtDestroyWidget w)) ))
+    (setq name (format nil "vecop~d" n))
+    ;;This process must be here. Otherwise hns_meg6 CRASH!!
+    (when (G-widget name :quiet)(GtDeleteWidget (G-widget name)))
     (setq name (format nil "pick~d" n))
     (when (G-widget name :quiet)(GtDeleteWidget (G-widget name)))
     (setq name (format nil "pick~ds" n))
@@ -440,9 +443,7 @@
     (when (G-widget name :quiet)(GtDeleteWidget (G-widget name)))
     (setq name (format nil "sel~d" n))
     (when (G-widget name :quiet)(GtDeleteWidget (G-widget name)))
-    (setq name (format nil "vecop~d" n))
-    (when (G-widget name :quiet)(GtDeleteWidget (G-widget name)))
-    (gc) 
+    (gc)
 ))
 
 (defun convertRL()
@@ -1355,13 +1356,13 @@
     (if (> k 1.0)
       (progn (setq R (func2 mtx nch ntm))
          (setq ch (first R) tm (second R)))
-    (progn
-      (setq tmvec (ruler-vector 0 (1- ntm) ntm))
-      (setq chvec (transpose (ruler-vector 0 (1- nch) nch)))
-      (setq vec (* mtx tmvec))
-      (setq tm (round (second (matrix-extent vec))))
-      (setq vec (column tm mtx))
-      (setq ch (round (* chvec vec)))))
+      (progn
+        (setq tmvec (ruler-vector 0 (1- ntm) ntm))
+        (setq chvec (transpose (ruler-vector 0 (1- nch) nch)))
+        (setq vec (* mtx tmvec))
+        (setq tm (round (second (matrix-extent vec))))
+        (setq vec (column tm mtx))
+        (setq ch (round (* chvec vec)))))
     (return (list maxval ch tm))
 ))
 
@@ -1469,7 +1470,7 @@
 ))
           
 (defun initialize()
-  (let ((w)(form)(bottomOffset 60)(rightOffset 200))
+  (let ((w)(form)(bottomOffset 60)(rightOffset 200)(file))
     (defvar frame001 nil "main window")
     (defvar frame002 nil "subwindow")
     (defvar frame003 nil "panel")
@@ -1529,7 +1530,9 @@
     (add-button *help-menu* "about hns_meg6.lsp" '(AboutMe))
     (create-memos)
     (unmanage form-memos)
-    
+    (add-button *display-menu* "sensor layout" 
+      '(manage setup-widgets::form-snsmap))
+    (show-html)
 ))
 
 (defun layout1(&rest strlist);optional (ndisp 3))
@@ -1742,8 +1745,8 @@
         (dotimes (n nch)
           (setq R (cons name R)))
         (return R))) 
-    (if (string-member lead (list "average1" "average2"))
-      (info "Use of average1 or average2 can make Graph unstable and crash!")) 
+    ;(if (string-member lead (list "average1" "average2"))
+    ;  (info "Use of average1 or average2 can make Graph unstable and crash!")) 
     (clear-widgets dispname)
     (setq w (G-widget dispname))
     (change-time w)
@@ -2870,6 +2873,19 @@
     (apply 'manage (list rb3 tb1 tb2 text-near))
     (setq rb-near rb3 rb-coil rb2 rb-peak rb1)
     (if (not noisemenu)(create-noisemenu))
+))
+
+(defun show-html(&optional(v 0))
+  (let ((filename))
+    (setq filename (format nil "~atutorials/hns_meg6.html" 
+      (filename-directory *hns-meg*)))
+    (if (= v 0)(if (file-exists-p filename)
+      (add-button *help-menu* "tutorial of hns_meg6"'(show-html 1))))
+    (if (= v 1)(progn
+      (if (= (system "which konqueror") 0)
+        (system (format nil "konqueror ~a &" filename))
+        (if (= (system "which firefox") 0)
+          (system (format nil "firefox ~a &" filename))))))
 ))
 
 (defun sort(xlist)
