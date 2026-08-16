@@ -1,5 +1,5 @@
 ;;Released by Akira Hashizume, Hiroshima University Hospital
-;;on 2026-July-9
+;;on 2026-August-16th
 ;;
 ;;for details, see AboutMe
 ;;
@@ -2305,7 +2305,6 @@
 
     (defun func2(sel T)
       (apply #'max (mapcar #'abs (matrix-extent (get-data-matrix sel T smp)))))
-
     (while (< tm tmax)
       (setq n (round (/ tm tmax 0.01)) T (x-to-sample w tm))
       (unless (longworking (format nil "scanning...~d%%." n) n 100)
@@ -2315,7 +2314,8 @@
         (func2 s5 T)(func2 s6 T)(func2 s7 T)(func2 s8 T))))
       (setq R (append R mtx) tm2 (+ tm step))
       (if (> tm2 tmax)(setq tm2 tmax smp (x-to-sample w step)))
-      (setq tm tm2))
+      (setq tm tm2)
+      (if (> (+ tm step) tmax)(setq tm (+ tm step))) );; for 600.615Hz or so
     (longworking "done" 100 100)
     (dolist (w (list s1 s2 s3 s4 s5 s6 s7 s8))(GtDeleteWidget w))
     (setq R (transpose (matrix R)) tm (* (length R) step))
