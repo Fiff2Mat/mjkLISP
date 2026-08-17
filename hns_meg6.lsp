@@ -1,5 +1,5 @@
 ;;Released by Akira Hashizume, Hiroshima University Hospital
-;;on 2026-August-16th
+;;on 2026-August-17th
 ;;
 ;;for details, see AboutMe
 ;;
@@ -2117,6 +2117,7 @@
       (memo-pngsaveBDIP) ))
 ))
 
+
 (defun memo-pngsaveBDIP(&optional (t00 nil))
   (let ((form)(label)(str)(t11)(D)(L))
     (setq form (XtParent displabel))
@@ -2210,6 +2211,7 @@
           (setq amp (* (read-from-string (XmTextGetString text-mag))1e-15)))
         (set-resource disp :ch-label-space 0
                            :scales (make-matrix n 1 (* amp 10))))) 
+    (rename-meg)
     (define-MEGsite);Triux neo? VectorView? Cleaveland?
     (unless (string-equal loadfiffname (resource (G-widget "file") :filename))
       (set-resource (G-widget "MTX") :matrix (make-matrix 0 0 0)))   )
@@ -2240,6 +2242,16 @@
       (GtUnlinkWidget (G-widget disp)))
     (change-time)
     (change-color)
+))
+
+(defun rename-meg()
+  (let ((w (G-widget "MEG"))(n)(chname)(nch))
+    (setq nch (resource w :channels))
+    (dotimes (n nch)
+      (setq chname (get-property w n :name))
+      (setq chname (string-left-trim "MEG " chname))
+      (setq chname (format nil "MEG~a" chname))
+      (set-property w n :name chname))    
 ))
 
 (defun rename-png(a b)
@@ -3204,6 +3216,8 @@
       (if (= (get-radiobox rb-coil) 2)
         (setq L (get-label-list maglabel))
         (setq L (get-label-list gralabel)))
+      (if (= (length L) 4)(setq L ;; for old MEG 1234->MEG1234
+        (list (format nil "~a~a" (first L)(second L))(third L)(fourth L))))
       (setq ch (format nil "~a" (first L)))
       (setq tpeak (second L))
       (if (= (get-radiobox rb-noise)2)(progn
