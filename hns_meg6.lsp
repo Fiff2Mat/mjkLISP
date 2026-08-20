@@ -1,5 +1,5 @@
 ;;Released by Akira Hashizume, Hiroshima University Hospital
-;;on 2026-August-17th
+;;on 2026-August-20th
 ;;
 ;;for details, see AboutMe
 ;;
@@ -1918,9 +1918,9 @@
 ))
 
 (defun memo-extractepoch()
-  (let ((bdip)(D nil)(R)(n)(Z nil)(func1))
-    (defun func1(x)
-      (/ x 1000))
+  (let ((bdip)(D nil)(R)(n)(Z nil)(func1)(func2))
+    (defun func1(x)(/ x 1000))
+    (defun func2(x)(/ (round (* x 1000)) 1000))
     (setq R (XmjkLispListGet memo4))
     (dotimes (n (length R))
       (setq D (cons (first (nth n R)) D)))
@@ -1928,7 +1928,7 @@
     (setq R (XmjkLispListGet (get-memop)))
     (when R
       (dotimes (n (length R))
-        (if (member (fourth (nth n R)) D)
+        (if (member (func2 (fourth (nth n R))) D);; msec integer
           (setq Z (cons (nth n R) Z)))))
     (XmjkLispListSet (get-memop) (reverse Z)) 
 ))
